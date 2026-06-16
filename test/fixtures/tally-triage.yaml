@@ -1,0 +1,19 @@
+domain: tally-triage
+worldState: { status: received, intent: null, replied: false }
+root:
+  type: select
+  tasks:
+    - name: handle-spam
+      conditions: [{ eq: [intent, spam] }]
+      operator: { tool: tally.close, prompt: null }
+      effects:  [{ set: { replied: true } }]
+    - name: handle-bug
+      type: sequence
+      conditions: [{ eq: [intent, bug] }]
+      tasks:
+        - name: open-ticket
+          operator: { tool: linear.create, prompt: "Summarize the bug from {{body}}" }
+          effects:  [{ set: { ticketId: "$result.id" } }]
+        - name: reply
+          operator: { tool: tally.reply, prompt: "Reply referencing ticket {{ticketId}}" }
+          effects:  [{ set: { replied: true } }]
