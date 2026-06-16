@@ -40,8 +40,11 @@ function arg(flag: string, def?: string): string | undefined {
 }
 const REPO = arg("--repo", join(process.env.HOME ?? "", "code/pi-packages/pi-llm-wiki"))!;
 const PR = arg("--pr", "1")!;
-const MODEL = arg("--model", "qwopus-4b-coder")!;
-const BASE = arg("--base", "http://localhost:8080/v1")!;
+// Default to the shared devserver (keeps the executor off the local laptop).
+// Override with --model / --base for a local llama-swap (e.g.
+// --model qwopus-4b-coder --base http://localhost:8080/v1).
+const MODEL = arg("--model", "qwopus-coder-9b")!;
+const BASE = arg("--base", "http://devserver.zosma.ai:8010/v1")!;
 const BRANCH = arg("--branch", "fix/87-idempotent-injection")!;
 const FAKE = process.argv.includes("--fake");
 const NO_PUSH = process.argv.includes("--no-push");
