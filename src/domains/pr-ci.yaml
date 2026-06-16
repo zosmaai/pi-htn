@@ -1,0 +1,54 @@
+domain: pr-ci
+# Generic, safe-by-default PR repair ladder for the watcher.
+#
+# The watcher re-checks `gh` between rounds (that is the verifier), and carries
+# the set of already-tried strategy ids forward as `tried_<id>: true`. Each red
+# round the planner picks the first rung that (a) matches the failure_class prior
+# and (b) has not been tried, pushes a fix, and the watcher re-checks. When every
+# rung has been tried the plan is empty and the watcher escalates ("exhausted").
+#
+# Repos SHOULD ship their own `.pi-htn/pr-ci.yaml` with project-specific rungs
+# (real test/lint commands, a revert rung, etc.). This built-in only does the
+# universally-safe moves: re-run flaky CI, and apply standard formatters.
+worldState:
+  pr: ""
+  repo: ""
+  branch: ""
+  failure_class: null
+  preferred_strategy: ""
+  last_strategy: ""
+  tried_rerun: false
+  tried_lint-fix: false
+root:
+  name: pr-ci
+  type: select
+  conditions: []
+  tasks:
+    # rung 1 — flaky CI: re-run the latest failed workflow run on the PR branch.
+    - name: m-rerun
+      type: sequence
+      conditions: [{ eq: [failure_class, flaky] }, { not: { eq: [tried_rerun, true] } }]
+      tasks:
+        - name: rerun
+          operator:
+            tool: rerun
+            exec:
+              cmd: bash
+              args:
+                - "-lc"
+                - "id=$(gh pr checks {{pr}} --json link -q '.[0].link' 2>/dev/null); gh run list -L1 --json databaseId -q '.[0].databaseId' | xargs -r gh run rerun --failed"
+          effects: [{ set: { tried_rerun: true, last_strategy: rerun } }]
+    # rung 2 — lint/format: apply standard fixers, commit, and push to the PR branch.
+    - name: m-lint
+      type: sequence
+      conditions: [{ not: { eq: [tried_lint-fix, true] } }]
+      tasks:
+        - name: lint-fix
+          operator:
+            tool: lint-fix
+            exec:
+              cmd: bash
+              args:
+                - "-lc"
+                - "npm run -s lint --if-present -- --fix >/dev/null 2>&1; npx --no-install eslint . --fix >/dev/null 2>&1; npx --no-install prettier -w . >/dev/null 2>&1; git commit -am 'chore(ci): auto lint --fix (pi-htn pr-ci)' && git push || true"
+          effects: [{ set: { "tried_lint-fix": true, last_strategy: lint-fix } }]
