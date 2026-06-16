@@ -5,20 +5,42 @@
   "description": "Author reusable HTN domains from session traces and replay them deterministically via small models.",
   "license": "MIT",
   "type": "module",
-  "keywords": ["pi", "pi-extension", "htn", "planning", "gameplanhtn"],
-  "files": ["src/", "vendor/", "README.md", "LICENSE"],
-  "pi": { "extensions": ["src/index.ts"] },
+  "keywords": [
+    "pi",
+    "pi-extension",
+    "htn",
+    "planning",
+    "gameplanhtn"
+  ],
+  "files": [
+    "src/",
+    "vendor/",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": [
+      "src/index.ts"
+    ]
+  },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@earendil-works/pi-ai": "^0.78.1",
     "loglevel": "^1.8.1",
     "yaml": "^2.5.0"
   },
-  "peerDependencies": { "@earendil-works/pi-coding-agent": ">=0.78.0" },
-  "peerDependenciesMeta": { "@earendil-works/pi-coding-agent": { "optional": true } },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.78.0"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "^0.78.1",
     "typescript": "^5.7.0",

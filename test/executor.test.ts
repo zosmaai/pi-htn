@@ -26,6 +26,21 @@ test("runs the bug sequence end to end, applying effects", async () => {
   expect(result.finalWorldState.ticketId).toBe("BUG-1"); // $result.id resolved
 });
 
+test("missing $result field resolves to null, not a phantom 1", async () => {
+  const yaml = loadDomain(readFileSync("test/fixtures/tally-triage.yaml", "utf8"));
+  const tools = new ToolRegistry();
+  // echo tool has NO `id` field -> $result.id is undefined
+  for (const t of ["tally.close", "linear.create", "tally.reply"])
+    tools.register(t, async (a) => ({ echo: true, args: a }));
+  const res = await executeDomain(yaml, {
+    input: { intent: "bug", body: "x" },
+    tools,
+    smallModel: new FakeSmallModel([{}, {}]),
+  });
+  expect(res.ok).toBe(true);
+  expect(res.finalWorldState.ticketId).toBeNull(); // not 1
+});
+
 test("circuit breaker trips after repeated tool failure", async () => {
   const yaml = loadDomain(readFileSync("test/fixtures/tally-triage.yaml", "utf8"));
   const r = reg();

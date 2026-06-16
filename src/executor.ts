@@ -117,7 +117,9 @@ function applyResultRefs(yaml: YamlDomain, name: string, result: unknown, ctx: C
         const path = v.slice("$result.".length).split(".");
         let cur: unknown = result;
         for (const p of path) cur = (cur as Record<string, unknown>)?.[p];
-        ctx.setState(k, cur, true, "planandexecute");
+        // NB: vendored Context.setState defaults value to 1 when given undefined.
+        // Coerce missing result fields to null so absent data never becomes a phantom 1.
+        ctx.setState(k, cur ?? null, true, "planandexecute");
       }
     }
   }
