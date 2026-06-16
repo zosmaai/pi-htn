@@ -35,6 +35,9 @@ See `docs/superpowers/specs/` for the full design and the ToT-vs-HTN positioning
   via `pi.exec()`; operators without one fall back to a safe **dry-run** echo (mixed domains OK).
   The run notice reports the mode (`live` / `dry-run` / `live: <tools>`).
 - `/htn watch <prNumber> [domain]` — watch a PR and **heal its CI until merge-ready** (see below).
+- `/htn settings` — open a panel to set the model endpoint, default domain, heal rounds, and poll
+  interval (persisted to `~/.pi-htn/config.json`). Non-interactive forms: `/htn settings show`,
+  `/htn settings reset`, `/htn settings <key> <value>` (keys: `modelBase model maxRounds pollSeconds domain`).
 - `/htn list` — list stored domains.
 
 ## Self-learning PR watcher (v0.2)
@@ -83,7 +86,10 @@ PI_HTN_MODEL_BASE   default http://devserver.zosma.ai:8010/v1
 PI_HTN_MODEL        default qwopus-coder-9b
 ```
 
-Override per-process with those env vars, or `--base` / `--model` on any runner (`src/config.ts`).
+Override per-process with those env vars, or `--base` / `--model` on any runner. The `/htn settings`
+panel persists the same values (plus default domain / heal rounds / poll interval) to
+`~/.pi-htn/config.json`. Resolution precedence is **env var > saved settings > built-in default**
+(`src/config.ts`, `src/settings.ts`).
 
 ## Domain schema (YAML, data — never code)
 

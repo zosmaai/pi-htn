@@ -23,7 +23,7 @@ import { resolveDomainYaml } from "../src/domains.ts";
 import { loadDomain } from "../src/yaml.ts";
 import { LlamaSmallModel, FakeSmallModel } from "../src/smallModel.ts";
 import { JsonlLogger } from "../src/log.ts";
-import { modelEndpoint } from "../src/config.ts";
+import { effectiveSettings } from "../src/settings.ts";
 import type { ShellExec } from "../src/exec.ts";
 
 function arg(flag: string, def?: string): string | undefined {
@@ -32,13 +32,14 @@ function arg(flag: string, def?: string): string | undefined {
 }
 const has = (flag: string) => process.argv.includes(flag);
 
-const ep = modelEndpoint();
+// Defaults come from saved settings (/htn settings) with env override; flags win.
+const cfg = effectiveSettings();
 const REPO = arg("--repo", process.cwd())!;
-const DOMAIN = arg("--domain", "pr-ci")!;
-const MODEL = arg("--model", ep.model)!;
-const BASE = arg("--base", ep.base)!;
-const MAX_ROUNDS = Number(arg("--max-rounds", "5"));
-const POLL_MS = Number(arg("--poll", "30")) * 1000;
+const DOMAIN = arg("--domain", cfg.domain)!;
+const MODEL = arg("--model", cfg.model)!;
+const BASE = arg("--base", cfg.modelBase)!;
+const MAX_ROUNDS = Number(arg("--max-rounds", String(cfg.maxRounds)));
+const POLL_MS = Number(arg("--poll", String(cfg.pollSeconds))) * 1000;
 const INTERVAL = arg("--interval") ? Number(arg("--interval")) * 1000 : 0;
 const FAKE = has("--fake");
 const NO_CHECKOUT = has("--no-checkout");

@@ -11,6 +11,10 @@ import { GhClient } from "./watcher/gh.ts";
 import { watchPr, defaultHeal } from "./watcher/watcher.ts";
 import { Playbook } from "./learn/playbook.ts";
 import { resolveDomainYaml } from "./domains.ts";
+import {
+  effectiveSettings, loadSettings, saveSettings, resetSettings,
+  SETTING_FIELDS, fieldByKey, coerceField, summarizeSettings,
+} from "./settings.ts";
 import { loadDomain } from "./yaml.ts";
 import type { ShellExec } from "./exec.ts";
 import type { WorldState } from "./types.ts";
@@ -110,10 +114,58 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           return;
         }
 
+        if (sub === "settings") {
+          const [key, ...vrest] = rest;
+
+          // Non-interactive paths: show / reset / quick-set <key> <value>.
+          if (key === "show" || (!key && !ctx.hasUI)) {
+            return ui.notify(summarizeSettings(effectiveSettings()), "info");
+          }
+          if (key === "reset") {
+            resetSettings();
+            return ui.notify(`Reset. ${summarizeSettings(effectiveSettings())}`, "info");
+          }
+          if (key && vrest.length) {
+            const field = fieldByKey(key);
+            if (!field) return ui.notify(`Unknown setting '${key}'. Keys: ${SETTING_FIELDS.map((f) => f.key).join(", ")}`, "warning");
+            try {
+              saveSettings({ [field.key]: coerceField(field, vrest.join(" ")) });
+              return ui.notify(summarizeSettings(effectiveSettings()), "info");
+            } catch (e) {
+              return ui.notify(`Invalid ${field.key}: ${(e as Error).message}`, "error");
+            }
+          }
+          if (!ctx.hasUI) return ui.notify("No interactive UI. Use: /htn settings <key> <value> | show | reset", "warning");
+
+          // Interactive panel: pick a field -> edit -> persist, looping until Done.
+          for (;;) {
+            const file = loadSettings();
+            const eff = effectiveSettings();
+            const labels = SETTING_FIELDS.map((f) => `${f.label}: ${file[f.key] ?? eff[f.key]}`);
+            const RESET = "Reset to defaults";
+            const DONE = "Done";
+            const choice = await ui.select("pi-htn settings", [...labels, RESET, DONE]);
+            if (!choice || choice === DONE) break;
+            if (choice === RESET) { resetSettings(); continue; }
+            const field = SETTING_FIELDS[labels.indexOf(choice)];
+            if (!field) continue;
+            const cur = String(file[field.key] ?? eff[field.key]);
+            const val = await ui.input(field.label, cur);
+            if (val === undefined) continue; // cancelled
+            try {
+              saveSettings({ [field.key]: coerceField(field, val) });
+            } catch (e) {
+              ui.notify(`Invalid ${field.key}: ${(e as Error).message}`, "error");
+            }
+          }
+          return ui.notify(summarizeSettings(effectiveSettings()), "info");
+        }
+
         if (sub === "watch") {
           const pr = rest.find((r) => /^\d+$/.test(r));
           if (!pr) return ui.notify("Usage: /htn watch <prNumber> [domain]", "warning");
-          const domainName = rest.find((r) => !/^\d+$/.test(r)) ?? "pr-ci";
+          const cfg = effectiveSettings();
+          const domainName = rest.find((r) => !/^\d+$/.test(r)) ?? cfg.domain;
           const repo = ctx.cwd;
           const shell: ShellExec = async (cmd, a) => {
             const r = await pi.exec(cmd, a);
@@ -129,7 +181,7 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           const heal = defaultHeal({ domain, shell, smallModel, playbook, repo, pr, logger, maxReplans: 6 });
           ui.notify(`Watching PR #${pr} with '${domainName}' (${resolved.kind})…`, "info");
           const res = await watchPr(
-            { repo, pr, maxRounds: 5, pollMs: 15_000 },
+            { repo, pr, maxRounds: cfg.maxRounds, pollMs: cfg.pollSeconds * 1000 },
             { gh, heal, playbook, onEvent: (e) => ui.notify(`#${pr} ${e.type} r${e.round}: ${e.message}`, "info") },
           );
           ui.notify(
@@ -141,7 +193,7 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           return;
         }
 
-        ui.notify("Usage: /htn [author|run|watch|list] <name|pr>", "warning");
+        ui.notify("Usage: /htn [author|run|watch|settings|list] <name|pr>", "warning");
       } catch (e) {
         ui.notify(`/htn error: ${(e as Error).message}`, "error");
       }
