@@ -7,6 +7,12 @@ import { executeDomain } from "./executor.ts";
 import { buildExecRegistry } from "./exec.ts";
 import { JsonlLogger } from "./log.ts";
 import { completeText, PiSmallModel, type ModelLike, type RegistryLike } from "./commands/piModel.ts";
+import { GhClient } from "./watcher/gh.ts";
+import { watchPr, defaultHeal } from "./watcher/watcher.ts";
+import { Playbook } from "./learn/playbook.ts";
+import { resolveDomainYaml } from "./domains.ts";
+import { loadDomain } from "./yaml.ts";
+import type { ShellExec } from "./exec.ts";
 import type { WorldState } from "./types.ts";
 
 const N_CANDIDATES = 3;
@@ -104,7 +110,38 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           return;
         }
 
-        ui.notify("Usage: /htn [author|run|list] <name>", "warning");
+        if (sub === "watch") {
+          const pr = rest.find((r) => /^\d+$/.test(r));
+          if (!pr) return ui.notify("Usage: /htn watch <prNumber> [domain]", "warning");
+          const domainName = rest.find((r) => !/^\d+$/.test(r)) ?? "pr-ci";
+          const repo = ctx.cwd;
+          const shell: ShellExec = async (cmd, a) => {
+            const r = await pi.exec(cmd, a);
+            return { stdout: r.stdout, stderr: r.stderr, code: r.code, killed: r.killed };
+          };
+          const resolved = resolveDomainYaml(domainName, { repoDir: repo });
+          const domain = loadDomain(resolved.yamlText);
+          const playbook = new Playbook();
+          const gh = new GhClient(shell);
+          const smallModel = model
+            ? new PiSmallModel(model, registry, signal)
+            : { async complete() { return {}; } };
+          const heal = defaultHeal({ domain, shell, smallModel, playbook, repo, pr, logger, maxReplans: 6 });
+          ui.notify(`Watching PR #${pr} with '${domainName}' (${resolved.kind})…`, "info");
+          const res = await watchPr(
+            { repo, pr, maxRounds: 5, pollMs: 15_000 },
+            { gh, heal, playbook, onEvent: (e) => ui.notify(`#${pr} ${e.type} r${e.round}: ${e.message}`, "info") },
+          );
+          ui.notify(
+            res.mergeReady
+              ? `✓ PR #${pr} merge-ready (${res.reason}, ${res.rounds.length} round(s))`
+              : `✗ PR #${pr} not merge-ready: ${res.reason}`,
+            res.mergeReady ? "info" : "error",
+          );
+          return;
+        }
+
+        ui.notify("Usage: /htn [author|run|watch|list] <name|pr>", "warning");
       } catch (e) {
         ui.notify(`/htn error: ${(e as Error).message}`, "error");
       }
