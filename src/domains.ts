@@ -1,7 +1,7 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { homedir } from "node:os";
 
 export const BUILTIN_DOMAIN_DIR = join(dirname(fileURLToPath(import.meta.url)), "domains");
 
@@ -29,7 +29,8 @@ export function resolveDomainYaml(
   candidates.push({ path: join(BUILTIN_DOMAIN_DIR, `${name}.yaml`), kind: "builtin" });
 
   for (const c of candidates) {
-    if (existsSync(c.path)) return { name, yamlText: readFileSync(c.path, "utf8"), path: c.path, kind: c.kind };
+    if (existsSync(c.path))
+      return { name, yamlText: readFileSync(c.path, "utf8"), path: c.path, kind: c.kind };
   }
   throw new Error(`No domain '${name}' found (looked in: ${candidates.map((c) => c.kind).join(", ")})`);
 }

@@ -1,8 +1,16 @@
-import { test, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadSettings, saveSettings, effectiveSettings, SETTINGS_DEFAULTS, coerceField, fieldByKey, summarizeSettings } from "../src/settings.ts";
+import { expect, test } from "vitest";
+import {
+  SETTINGS_DEFAULTS,
+  coerceField,
+  effectiveSettings,
+  fieldByKey,
+  loadSettings,
+  saveSettings,
+  summarizeSettings,
+} from "../src/settings.ts";
 
 const dir = () => mkdtempSync(join(tmpdir(), "htn-set-"));
 

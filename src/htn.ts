@@ -9,8 +9,11 @@
 // @ts-expect-error - vendored JS has no type declarations; treated as `any`.
 import htn from "../vendor/gameplanhtn/index.js";
 
+// biome-ignore lint/suspicious/noExplicitAny: vendored JS planner has no type declarations
+type AnyCtor = new (...args: any[]) => any;
+
 export default htn as {
-  Domain: new (def: Record<string, unknown>) => any;
-  Context: new () => any;
-  Planner: new () => any;
+  Domain: AnyCtor;
+  Context: AnyCtor;
+  Planner: AnyCtor;
 };

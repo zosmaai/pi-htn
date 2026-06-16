@@ -1,5 +1,5 @@
 import { parse } from "yaml";
-import type { YamlDomain, TaskNode, CompoundNode } from "./types.ts";
+import type { CompoundNode, TaskNode, YamlDomain } from "./types.ts";
 import { isCompound } from "./types.ts";
 
 function validateNode(n: TaskNode, path: string): void {

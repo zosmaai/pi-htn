@@ -5,30 +5,20 @@
   "description": "Author reusable HTN domains from session traces and replay them deterministically via small models.",
   "license": "MIT",
   "type": "module",
-  "keywords": [
-    "pi",
-    "pi-extension",
-    "htn",
-    "planning",
-    "gameplanhtn"
-  ],
-  "files": [
-    "src/",
-    "bin/",
-    "vendor/",
-    "README.md",
-    "LICENSE"
-  ],
+  "keywords": ["pi", "pi-extension", "htn", "planning", "gameplanhtn"],
+  "files": ["src/", "bin/", "vendor/", "README.md", "LICENSE"],
   "pi": {
-    "extensions": [
-      "src/index.ts"
-    ]
+    "extensions": ["src/index.ts"]
   },
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "watch": "tsx bin/pi-htn-watch.ts"
+    "watch": "tsx bin/pi-htn-watch.ts",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc --noEmit"
   },
   "dependencies": {
     "@earendil-works/pi-ai": "^0.78.1",
@@ -44,7 +34,10 @@
     }
   },
   "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
     "@earendil-works/pi-coding-agent": "^0.78.1",
+    "@vitest/coverage-v8": "^4.1.9",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.0",
     "vitest": "^4.1.8"
   },

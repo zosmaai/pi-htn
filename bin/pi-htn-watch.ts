@@ -16,15 +16,15 @@
  */
 import { spawn } from "node:child_process";
 
-import { GhClient } from "../src/watcher/gh.ts";
-import { watchPr, defaultHeal, type WatchEvent } from "../src/watcher/watcher.ts";
-import { Playbook } from "../src/learn/playbook.ts";
 import { resolveDomainYaml } from "../src/domains.ts";
-import { loadDomain } from "../src/yaml.ts";
-import { LlamaSmallModel, FakeSmallModel } from "../src/smallModel.ts";
+import type { ShellExec } from "../src/exec.ts";
+import { Playbook } from "../src/learn/playbook.ts";
 import { JsonlLogger } from "../src/log.ts";
 import { effectiveSettings } from "../src/settings.ts";
-import type { ShellExec } from "../src/exec.ts";
+import { FakeSmallModel, LlamaSmallModel } from "../src/smallModel.ts";
+import { GhClient } from "../src/watcher/gh.ts";
+import { type WatchEvent, defaultHeal, watchPr } from "../src/watcher/watcher.ts";
+import { loadDomain } from "../src/yaml.ts";
 
 function arg(flag: string, def?: string): string | undefined {
   const i = process.argv.indexOf(flag);
@@ -58,16 +58,22 @@ function repoShell(cwd: string): ShellExec {
   return (cmd, args) =>
     new Promise((resolve) => {
       const p = spawn(cmd, args, { cwd });
-      let stdout = "", stderr = "";
-      p.stdout.on("data", (d) => (stdout += d));
-      p.stderr.on("data", (d) => (stderr += d));
+      let stdout = "";
+      let stderr = "";
+      p.stdout.on("data", (d) => {
+        stdout += d;
+      });
+      p.stderr.on("data", (d) => {
+        stderr += d;
+      });
       p.on("close", (code) => resolve({ stdout, stderr, code: code ?? 0 }));
     });
 }
 
 function onEvent(pr: number | string) {
   return (e: WatchEvent) => {
-    const tag = e.type === "checks" ? c.dim("checks") : e.type === "heal" ? c.yellow("heal ") : c.cyan("done ");
+    const tag =
+      e.type === "checks" ? c.dim("checks") : e.type === "heal" ? c.yellow("heal ") : c.cyan("done ");
     console.log(`  ${c.dim(`#${pr}`)} ${tag} ${c.dim(`r${e.round}`)} ${e.message}`);
   };
 }
@@ -75,12 +81,23 @@ function onEvent(pr: number | string) {
 async function watchOne(pr: number | string, shell: ShellExec, gh: GhClient, playbook: Playbook) {
   const resolved = resolveDomainYaml(DOMAIN, { repoDir: REPO });
   const domain = loadDomain(resolved.yamlText);
-  console.log(c.bold(`\n  PR #${pr} · domain '${DOMAIN}' (${resolved.kind}) · executor ${FAKE ? "fake" : MODEL}`));
+  console.log(
+    c.bold(`\n  PR #${pr} · domain '${DOMAIN}' (${resolved.kind}) · executor ${FAKE ? "fake" : MODEL}`),
+  );
 
   if (!NO_CHECKOUT && !FAKE) await shell("gh", ["pr", "checkout", String(pr)]);
 
   const smallModel = FAKE ? new FakeSmallModel([]) : new LlamaSmallModel(BASE, MODEL);
-  const heal = defaultHeal({ domain, shell, smallModel, playbook, repo: REPO, pr, logger: new JsonlLogger(), maxReplans: MAX_ROUNDS + 1 });
+  const heal = defaultHeal({
+    domain,
+    shell,
+    smallModel,
+    playbook,
+    repo: REPO,
+    pr,
+    logger: new JsonlLogger(),
+    maxReplans: MAX_ROUNDS + 1,
+  });
 
   const res = await watchPr(
     { repo: REPO, pr, maxRounds: MAX_ROUNDS, pollMs: POLL_MS },
@@ -103,7 +120,10 @@ async function pass(): Promise<boolean> {
     console.log(c.dim(`  ${targets.length} open PR(s): ${targets.join(", ") || "none"}`));
   } else {
     const pr = arg("--pr");
-    if (!pr) { console.error("Need --pr <n> or --all"); process.exit(2); }
+    if (!pr) {
+      console.error("Need --pr <n> or --all");
+      process.exit(2);
+    }
     targets = [pr!];
   }
 
@@ -124,4 +144,7 @@ async function main() {
   process.exit(ok ? 0 : 1);
 }
 
-main().catch((e) => { console.error(e); process.exit(1); });
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

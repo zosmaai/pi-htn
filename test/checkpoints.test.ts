@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { CheckpointWriter } from "../src/checkpoints.ts";
 
 test("writes one checkpoint line per step with sessionNodeId", () => {

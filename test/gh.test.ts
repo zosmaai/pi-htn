@@ -1,6 +1,6 @@
-import { test, expect } from "vitest";
-import { parseChecks, GhClient } from "../src/watcher/gh.ts";
+import { expect, test } from "vitest";
 import type { ShellResult } from "../src/exec.ts";
+import { GhClient, parseChecks } from "../src/watcher/gh.ts";
 
 test("parseChecks: any failure => red with failing names", () => {
   const s = parseChecks([

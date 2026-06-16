@@ -1,10 +1,10 @@
-import { test, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { watchPr, type HealFn } from "../src/watcher/watcher.ts";
+import { expect, test } from "vitest";
 import { Playbook } from "../src/learn/playbook.ts";
 import type { ChecksSummary } from "../src/watcher/gh.ts";
+import { type HealFn, watchPr } from "../src/watcher/watcher.ts";
 
 function fakeGh(seq: ChecksSummary[]) {
   let i = 0;
@@ -25,7 +25,10 @@ test("already-green PR is merge-ready with no heal", async () => {
 test("red → heal → pending → green yields merge-ready 'healed' and records outcome", async () => {
   const pb = newPb();
   let healed = false;
-  const heal: HealFn = async () => { healed = true; return { ok: true, strategy: "test-fix", steps: ["apply→x"] }; };
+  const heal: HealFn = async () => {
+    healed = true;
+    return { ok: true, strategy: "test-fix", steps: ["apply→x"] };
+  };
   const r = await watchPr(
     { repo: "r", pr: 7, pollMs: 0 },
     { gh: fakeGh([RED, PENDING, GREEN]), heal, playbook: pb, sleep: async () => {} },

@@ -1,6 +1,6 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 import { DEFAULT_MODEL_BASE, DEFAULT_MODEL_ID } from "./config.ts";
 
 // Persisted user settings, written by `/htn settings`. Precedence when resolving
@@ -83,7 +83,7 @@ export function saveSettings(patch: Partial<HtnSettings>, dir = defaultDir()): H
     const v = merged[k];
     if (v === undefined || v === "") delete merged[k];
   }
-  writeFileSync(settingsPath(dir), JSON.stringify(merged, null, 2) + "\n");
+  writeFileSync(settingsPath(dir), `${JSON.stringify(merged, null, 2)}\n`);
   return merged;
 }
 

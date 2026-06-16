@@ -17,13 +17,13 @@
  */
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { type ShellExec, buildExecRegistry } from "../../src/exec.ts";
+import { type StepRecord, executeDomain } from "../../src/executor.ts";
+import { FakeSmallModel, LlamaSmallModel, parseModelJson } from "../../src/smallModel.ts";
 import { loadDomain } from "../../src/yaml.ts";
-import { buildExecRegistry, type ShellExec } from "../../src/exec.ts";
-import { executeDomain, type StepRecord } from "../../src/executor.ts";
-import { LlamaSmallModel, FakeSmallModel, parseModelJson } from "../../src/smallModel.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -45,8 +45,12 @@ function repoShell(cwd: string): ShellExec {
       const p = spawn(cmd, args, { cwd });
       let stdout = "";
       let stderr = "";
-      p.stdout.on("data", (d) => (stdout += d));
-      p.stderr.on("data", (d) => (stderr += d));
+      p.stdout.on("data", (d) => {
+        stdout += d;
+      });
+      p.stderr.on("data", (d) => {
+        stderr += d;
+      });
       p.on("close", (code) => resolve({ stdout, stderr, code: code ?? 0 }));
     });
 }
@@ -55,8 +59,12 @@ function sh(cwd: string, cmd: string, args: string[]): Promise<{ out: string; co
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd });
     let out = "";
-    p.stdout.on("data", (d) => (out += d));
-    p.stderr.on("data", (d) => (out += d));
+    p.stdout.on("data", (d) => {
+      out += d;
+    });
+    p.stderr.on("data", (d) => {
+      out += d;
+    });
     p.on("close", (code) => resolve({ out, code: code ?? 0 }));
   });
 }
@@ -82,10 +90,7 @@ async function main() {
   }
 
   // 2. Tiny model classifies the failure (its single planning-relevant call).
-  const classifyPrompt =
-    `A CI job failed. Test output:\n---\n${testOut.slice(0, 1200)}\n---\n` +
-    `Classify the failure. Output JSON only, one field "failure_class", ` +
-    `one of: flaky, lint, test. Example: {"failure_class":"flaky"}`;
+  const classifyPrompt = `A CI job failed. Test output:\n---\n${testOut.slice(0, 1200)}\n---\nClassify the failure. Output JSON only, one field "failure_class", one of: flaky, lint, test. Example: {"failure_class":"flaky"}`;
   let failureClass = "flaky";
   if (FAKE) {
     failureClass = "flaky"; // scripted wrong guess for deterministic demo
@@ -94,7 +99,9 @@ async function main() {
     const reply = await m.complete({ prompt: classifyPrompt, worldState: {} });
     failureClass = String((reply as { failure_class?: string }).failure_class ?? "flaky");
   }
-  console.log(`  ${c.dim("▸")} classify (4B) ......... ${c.cyan(`"${failureClass}"`)}  ${c.dim("← the model's one guess")}`);
+  console.log(
+    `  ${c.dim("▸")} classify (4B) ......... ${c.cyan(`"${failureClass}"`)}  ${c.dim("← the model's one guess")}`,
+  );
 
   // 3. Execute the HTN repair ladder. Trace each step live.
   const yaml = loadDomain(readFileSync(join(HERE, "pr-doctor.yaml"), "utf8"));
@@ -125,7 +132,9 @@ async function main() {
     const res = await baseShell(cmd, args);
     if (args.some((a) => a.includes("verify-green")) && res.code !== 0) {
       console.log(`  ${c.dim("▸")} verify ................ ${c.red("✗ still red")}`);
-      console.log(`  ${c.yellow("↩")} backtrack ............. ${c.dim(`${lastApply} excluded; planner selects next rung`)}`);
+      console.log(
+        `  ${c.yellow("↩")} backtrack ............. ${c.dim(`${lastApply} excluded; planner selects next rung`)}`,
+      );
       backtracks++;
     }
     return res;

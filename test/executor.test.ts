@@ -1,9 +1,9 @@
-import { test, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { loadDomain } from "../src/yaml.ts";
-import { ToolRegistry } from "../src/toolRegistry.ts";
-import { FakeSmallModel } from "../src/smallModel.ts";
+import { expect, test } from "vitest";
 import { executeDomain } from "../src/executor.ts";
+import { FakeSmallModel } from "../src/smallModel.ts";
+import { ToolRegistry } from "../src/toolRegistry.ts";
+import { loadDomain } from "../src/yaml.ts";
 
 function reg() {
   const r = new ToolRegistry();
@@ -44,7 +44,9 @@ test("missing $result field resolves to null, not a phantom 1", async () => {
 test("circuit breaker trips after repeated tool failure", async () => {
   const yaml = loadDomain(readFileSync("test/fixtures/tally-triage.yaml", "utf8"));
   const r = reg();
-  r.register("tally.close", async () => { throw new Error("boom"); });
+  r.register("tally.close", async () => {
+    throw new Error("boom");
+  });
   const result = await executeDomain(yaml, {
     input: { intent: "spam" },
     tools: r,

@@ -1,10 +1,8 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { buildAuthorPrompt, extractYamlBlock } from "../src/author.ts";
 
 test("author prompt embeds the trace and demands YAML + branch reasoning", () => {
-  const p = buildAuthorPrompt("tally-triage", [
-    { name: "tally.close", arguments: { id: 1 } },
-  ]);
+  const p = buildAuthorPrompt("tally-triage", [{ name: "tally.close", arguments: { id: 1 } }]);
   expect(p).toMatch(/tally-triage/);
   expect(p).toMatch(/tally\.close/);
   expect(p).toMatch(/YAML/i);

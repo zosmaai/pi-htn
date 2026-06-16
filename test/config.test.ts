@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
-import { modelEndpoint, DEFAULT_MODEL_BASE, DEFAULT_MODEL_ID } from "../src/config.ts";
+import { expect, test } from "vitest";
+import { DEFAULT_MODEL_BASE, DEFAULT_MODEL_ID, modelEndpoint } from "../src/config.ts";
 
 test("defaults to the devserver, not the laptop", () => {
   const e = modelEndpoint({});

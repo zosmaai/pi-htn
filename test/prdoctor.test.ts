@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { buildExecRegistry, type ShellExec } from "../src/exec.ts";
+import { describe, expect, it } from "vitest";
+import { type ShellExec, buildExecRegistry } from "../src/exec.ts";
 import { executeDomain } from "../src/executor.ts";
 import { FakeSmallModel } from "../src/smallModel.ts";
 import type { YamlDomain } from "../src/types.ts";
@@ -38,7 +38,11 @@ function prDoctorDomain(): YamlDomain {
               type: "sequence",
               conditions: [{ eq: ["failure_class", "flaky"] }, { not: { eq: ["rerun_tried", true] } }],
               tasks: [
-                { name: "apply-rerun", operator: { tool: "rerun", exec: { cmd: "do", args: ["rerun"] } }, effects: [{ set: { rerun_tried: true } }] },
+                {
+                  name: "apply-rerun",
+                  operator: { tool: "rerun", exec: { cmd: "do", args: ["rerun"] } },
+                  effects: [{ set: { rerun_tried: true } }],
+                },
                 verify("rerun"),
               ],
             },
@@ -47,7 +51,11 @@ function prDoctorDomain(): YamlDomain {
               type: "sequence",
               conditions: [{ not: { eq: ["lint_tried", true] } }],
               tasks: [
-                { name: "apply-lint", operator: { tool: "lint", exec: { cmd: "do", args: ["lint"] } }, effects: [{ set: { lint_tried: true } }] },
+                {
+                  name: "apply-lint",
+                  operator: { tool: "lint", exec: { cmd: "do", args: ["lint"] } },
+                  effects: [{ set: { lint_tried: true } }],
+                },
                 verify("lint"),
               ],
             },
@@ -56,7 +64,11 @@ function prDoctorDomain(): YamlDomain {
               type: "sequence",
               conditions: [{ not: { eq: ["revert_tried", true] } }],
               tasks: [
-                { name: "apply-revert", operator: { tool: "revert", exec: { cmd: "do", args: ["revert"] } }, effects: [{ set: { revert_tried: true } }] },
+                {
+                  name: "apply-revert",
+                  operator: { tool: "revert", exec: { cmd: "do", args: ["revert"] } },
+                  effects: [{ set: { revert_tried: true } }],
+                },
                 verify("revert"),
               ],
             },
@@ -74,7 +86,11 @@ function prDoctorDomain(): YamlDomain {
 }
 
 // verify fails the first `failsFirst` times (red build), then passes (green).
-function shellThatGoesGreenAfter(failsFirst: number): { shell: ShellExec; order: string[]; verifyCount: () => number } {
+function shellThatGoesGreenAfter(failsFirst: number): {
+  shell: ShellExec;
+  order: string[];
+  verifyCount: () => number;
+} {
   const order: string[] = [];
   let verifies = 0;
   const shell: ShellExec = async (cmd, args) => {

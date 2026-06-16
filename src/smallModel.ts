@@ -68,7 +68,8 @@ export class LlamaSmallModel implements SmallModelClient {
       }),
     });
     const data = (await res.json()) as {
-      choices: { message: { content: string } }[] };
+      choices: { message: { content: string } }[];
+    };
     const content = data.choices?.[0]?.message?.content ?? "";
     if (!content.trim())
       throw new Error(

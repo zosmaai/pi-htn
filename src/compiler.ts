@@ -1,7 +1,7 @@
 import htn from "./htn.ts";
-import type { YamlDomain, TaskNode, WorldState, Predicate } from "./types.ts";
-import { isCompound } from "./types.ts";
 import { compileCondition, compileEffect } from "./predicates.ts";
+import type { Predicate, TaskNode, WorldState, YamlDomain } from "./types.ts";
+import { isCompound } from "./types.ts";
 
 // Build the plain-object task tree GamePlanHTN's Domain constructor understands.
 function buildTask(node: TaskNode): Record<string, unknown> {
@@ -45,9 +45,12 @@ function predicateKeys(p: Predicate, out: Set<string>): void {
 function collectKeys(yaml: YamlDomain): Set<string> {
   const keys = new Set<string>(Object.keys(yaml.worldState));
   const walk = (n: TaskNode): void => {
-    (n.conditions ?? []).forEach((c) => predicateKeys(c, keys));
-    if (isCompound(n)) n.tasks.forEach(walk);
-    else (n.effects ?? []).forEach((e) => Object.keys(e.set).forEach((k) => keys.add(k)));
+    for (const c of n.conditions ?? []) predicateKeys(c, keys);
+    if (isCompound(n)) {
+      for (const t of n.tasks) walk(t);
+    } else {
+      for (const e of n.effects ?? []) for (const k of Object.keys(e.set)) keys.add(k);
+    }
   };
   walk(yaml.root);
   return keys;

@@ -1,6 +1,6 @@
-import { appendFileSync, mkdirSync, readFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
+import { join } from "node:path";
 
 // One recorded repair outcome. The playbook is pi-htn's self-learning memory:
 // over many PRs it accumulates which strategy actually fixes which failure class,
@@ -10,8 +10,8 @@ export interface PlaybookEntry {
   repo: string;
   pr: number | string;
   failureClass: string; // e.g. "lint" | "flaky" | "test" | "build" | "unknown"
-  strategy: string;     // the repair rung that ran (last_strategy from the HTN)
-  ok: boolean;          // did checks go green after it?
+  strategy: string; // the repair rung that ran (last_strategy from the HTN)
+  ok: boolean; // did checks go green after it?
 }
 
 export interface StrategyStat {
@@ -29,7 +29,7 @@ export class Playbook {
   }
 
   record(entry: Omit<PlaybookEntry, "ts">): void {
-    appendFileSync(this.file, JSON.stringify({ ts: Date.now(), ...entry }) + "\n");
+    appendFileSync(this.file, `${JSON.stringify({ ts: Date.now(), ...entry })}\n`);
   }
 
   all(): PlaybookEntry[] {
@@ -37,7 +37,13 @@ export class Playbook {
     return readFileSync(this.file, "utf8")
       .split("\n")
       .filter((l) => l.trim())
-      .flatMap((l) => { try { return [JSON.parse(l) as PlaybookEntry]; } catch { return []; } });
+      .flatMap((l) => {
+        try {
+          return [JSON.parse(l) as PlaybookEntry];
+        } catch {
+          return [];
+        }
+      });
   }
 
   // Strategies for a failure class, best-first. Laplace smoothing (+1/+2) keeps a

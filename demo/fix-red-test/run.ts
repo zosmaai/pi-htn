@@ -26,9 +26,9 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildExecRegistry, type ShellExec } from "../../src/exec.ts";
-import { executeDomain, type StepRecord } from "../../src/executor.ts";
-import { LlamaSmallModel, FakeSmallModel } from "../../src/smallModel.ts";
+import { type ShellExec, buildExecRegistry } from "../../src/exec.ts";
+import { type StepRecord, executeDomain } from "../../src/executor.ts";
+import { FakeSmallModel, LlamaSmallModel } from "../../src/smallModel.ts";
 import { loadDomain } from "../../src/yaml.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -55,8 +55,12 @@ function sh(cwd: string, cmd: string, args: string[]): Promise<{ out: string; co
   return new Promise((resolve) => {
     const p = spawn(cmd, args, { cwd });
     let out = "";
-    p.stdout.on("data", (d) => (out += d));
-    p.stderr.on("data", (d) => (out += d));
+    p.stdout.on("data", (d) => {
+      out += d;
+    });
+    p.stderr.on("data", (d) => {
+      out += d;
+    });
     p.on("close", (code) => resolve({ out, code: code ?? 0 }));
   });
 }
@@ -68,8 +72,12 @@ function repoShell(cwd: string): ShellExec {
       const p = spawn(cmd, args, { cwd });
       let stdout = "";
       let stderr = "";
-      p.stdout.on("data", (d) => (stdout += d));
-      p.stderr.on("data", (d) => (stderr += d));
+      p.stdout.on("data", (d) => {
+        stdout += d;
+      });
+      p.stderr.on("data", (d) => {
+        stderr += d;
+      });
       p.on("close", (code) => resolve({ stdout, stderr, code: code ?? 0 }));
     });
 }
@@ -98,20 +106,13 @@ async function main() {
   //    Hoisted to plan input — the executor plans the whole domain up-front, so
   //    a mid-plan $result can't gate the `select`.
   let approach = "guard";
-  let line = 'if (systemPrompt.includes(WIKI_STATUS_BLOCK)) return systemPrompt;';
+  let line = "if (systemPrompt.includes(WIKI_STATUS_BLOCK)) return systemPrompt;";
   if (FAKE) {
     // Scripted WRONG patch (references a non-existent constant) → rung 1 stays
     // red → the HTN backtracks to the deterministic rung. Deterministic demo.
-    line = 'if (systemPrompt.includes(WIKI_FOOTER_BLOCK)) return systemPrompt;';
+    line = "if (systemPrompt.includes(WIKI_FOOTER_BLOCK)) return systemPrompt;";
   } else {
-    const patchPrompt =
-      `The function below must be idempotent: appending the wiki-status footer ` +
-      `when it is already present must be a no-op.\n\n` +
-      `Buggy function:\nexport function appendWikiStatus${buggyFn}\n}\n\n` +
-      `The footer constant is WIKI_STATUS_BLOCK. Emit ONE TypeScript guard ` +
-      `statement for the TOP of the function body that returns systemPrompt ` +
-      `unchanged when the footer is already present.\n` +
-      `Output JSON only: {"approach":"guard","line":"<one statement>"}`;
+    const patchPrompt = `The function below must be idempotent: appending the wiki-status footer when it is already present must be a no-op.\n\nBuggy function:\nexport function appendWikiStatus${buggyFn}\n}\n\nThe footer constant is WIKI_STATUS_BLOCK. Emit ONE TypeScript guard statement for the TOP of the function body that returns systemPrompt unchanged when the footer is already present.\nOutput JSON only: {"approach":"guard","line":"<one statement>"}`;
     const m = new LlamaSmallModel(BASE, MODEL);
     const reply = await m.complete({ prompt: patchPrompt, worldState: {} });
     approach = String((reply as { approach?: string }).approach ?? "guard");
@@ -123,7 +124,10 @@ async function main() {
   const yaml = loadDomain(readFileSync(join(HERE, "fix-red-test.yaml"), "utf8"));
   const smallModel = FAKE
     ? new FakeSmallModel([
-        { comment: `Made appendWikiStatus idempotent so the #87 footer no longer duplicates on retried starts.` },
+        {
+          comment:
+            "Made appendWikiStatus idempotent so the #87 footer no longer duplicates on retried starts.",
+        },
       ])
     : new LlamaSmallModel(BASE, MODEL);
 

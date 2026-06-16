@@ -1,5 +1,5 @@
 import htnPkg from "./htn.ts";
-import type { Predicate, EffectSpec } from "./types.ts";
+import type { EffectSpec, Predicate } from "./types.ts";
 
 // EffectType.PlanAndExecute is the only effect type that fires during real execution.
 const PLAN_AND_EXECUTE = "planandexecute";
@@ -12,8 +12,14 @@ type Ctx = {
 
 export function compileCondition(p: Predicate): (ctx: Ctx) => boolean {
   if ("has" in p) return (ctx) => ctx.hasState(p.has);
-  if ("not" in p) { const inner = compileCondition(p.not); return (ctx) => !inner(ctx); }
-  if ("eq" in p) { const [k, v] = p.eq; return (ctx) => ctx.getState(k) === v; }
+  if ("not" in p) {
+    const inner = compileCondition(p.not);
+    return (ctx) => !inner(ctx);
+  }
+  if ("eq" in p) {
+    const [k, v] = p.eq;
+    return (ctx) => ctx.getState(k) === v;
+  }
   throw new Error(`Unknown predicate: ${JSON.stringify(p)}`);
 }
 
