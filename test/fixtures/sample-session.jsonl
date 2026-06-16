@@ -1,0 +1,3 @@
+{"type":"session","id":"s1"}
+{"type":"message","id":"m1","parentId":"s1","role":"assistant","toolCalls":[{"name":"tally.close","arguments":{"id":1}}]}
+{"type":"message","id":"m2","parentId":"m1","role":"assistant","toolCalls":[{"name":"tally.reply","arguments":{"body":"thanks"}}]}
