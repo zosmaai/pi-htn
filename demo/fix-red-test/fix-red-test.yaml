@@ -1,0 +1,96 @@
+# fix-red-test — heal a RED regression test on a real PR with a 4B model + HTN.
+#
+# Target: arjun-zosma/pi-llm-wiki#1 (reproduces zosmaai/pi-llm-wiki#87).
+# The PR ships a failing idempotency test for appendWikiStatus(). This domain
+# drives the repair:
+#
+#   * The 4B model does the NARROW work: it reads the failing test + the buggy
+#     function and emits the actual guard statement to insert. That guess is
+#     HOISTED to plan input (`approach` + `line`) because the executor plans the
+#     whole domain up-front — a mid-plan $result can't gate a `select`.
+#   * The HTN owns STRUCTURE + BACKTRACKING. Each rung applies a repair then
+#     verifies (verify throws on a red test → executor replans). The just-tried
+#     rung is excluded by its *_tried guard, so the planner climbs to the next.
+#   * Reliability is structural: rung 1 uses the model's patch; rungs 2–3 are
+#     deterministic, known-good idempotency fixes that GUARANTEE convergence.
+#
+# verify runs ONLY the scoped regression test, so the gate is deterministic and
+# unaffected by unrelated local-env test noise.
+domain: fix-red-test
+worldState:
+  pr: ""
+  repo: ""
+  scriptdir: ""
+  approach: null
+  line: ""
+  last_strategy: ""
+  guard_tried: false
+  dedupe_tried: false
+  revert_tried: false
+  fixed: false
+  reported: false
+root:
+  name: fix-red-test
+  type: sequence
+  tasks:
+    - name: repair
+      type: select
+      conditions: [{ not: { eq: [fixed, true] } }]
+      tasks:
+        # rung 1 — apply the 4B model's emitted guard line (its real patch work).
+        - name: m-guard
+          type: sequence
+          conditions: [{ eq: [approach, guard] }, { not: { eq: [guard_tried, true] } }]
+          tasks:
+            - name: apply-guard
+              operator:
+                tool: guard
+                exec: { cmd: bash, args: ["{{scriptdir}}/apply-guard.sh", "{{repo}}", "{{line}}"] }
+              effects: [{ set: { guard_tried: true, last_strategy: model-guard } }]
+            - name: verify-guard
+              operator:
+                tool: verify
+                exec: { cmd: bash, args: ["{{scriptdir}}/verify-test.sh", "{{repo}}"] }
+              effects: [{ set: { fixed: true } }]
+        # rung 2 — deterministic strip-then-append (known-good idempotency).
+        - name: m-dedupe
+          type: sequence
+          conditions: [{ not: { eq: [dedupe_tried, true] } }]
+          tasks:
+            - name: apply-dedupe
+              operator:
+                tool: dedupe
+                exec: { cmd: bash, args: ["{{scriptdir}}/apply-dedupe.sh", "{{repo}}"] }
+              effects: [{ set: { dedupe_tried: true, last_strategy: strip-then-append } }]
+            - name: verify-dedupe
+              operator:
+                tool: verify
+                exec: { cmd: bash, args: ["{{scriptdir}}/verify-test.sh", "{{repo}}"] }
+              effects: [{ set: { fixed: true } }]
+        # rung 3 — guaranteed-green terminal: rewrite the function from template.
+        - name: m-revert
+          type: sequence
+          conditions: [{ not: { eq: [revert_tried, true] } }]
+          tasks:
+            - name: apply-revert
+              operator:
+                tool: revert
+                exec: { cmd: bash, args: ["{{scriptdir}}/apply-revert.sh", "{{repo}}"] }
+              effects: [{ set: { revert_tried: true, last_strategy: canonical-template } }]
+            - name: verify-revert
+              operator:
+                tool: verify
+                exec: { cmd: bash, args: ["{{scriptdir}}/verify-test.sh", "{{repo}}"] }
+              effects: [{ set: { fixed: true } }]
+    # report — the 4B model writes the one-sentence PR comment; report.sh posts it.
+    - name: report
+      conditions: [{ eq: [fixed, true] }, { not: { eq: [reported, true] } }]
+      operator:
+        tool: report
+        prompt: |
+          A red regression test (issue #87: non-idempotent context injection)
+          was just healed automatically. The repair strategy used was
+          "{{last_strategy}}". Write a single-sentence PR comment stating what
+          was fixed. Output JSON only: {"comment":"<one sentence>"}
+        exec: { cmd: bash, args: ["{{scriptdir}}/report.sh", "{{repo}}", "{{pr}}", "{{comment}}"] }
+      effects: [{ set: { reported: true } }]
