@@ -15,9 +15,16 @@ export function buildAuthorPrompt(name: string, trace: TraceCall[]): string {
     `  domain: <name>`,
     `  worldState: { ... initial predicates ... }`,
     `  root: { type: select|sequence, tasks: [ ... ] }`,
-    `Each primitive: { name, conditions?: [{eq:[k,v]}|{has:k}|{not:..}], operator: {tool, prompt?}, effects?: [{set:{k:v}}] }.`,
+    `Each primitive: { name, conditions?: [{eq:[k,v]}|{has:k}|{not:..}], operator: {tool, prompt?, exec?}, effects?: [{set:{k:v}}] }.`,
     `Identify which steps are conditional and express the branch predicates as conditions.`,
     `Use $result.<field> in effects to capture tool outputs. Do not invent tools not in the trace.`,
+    ``,
+    `Real execution (optional): if a step maps to a deterministic shell command, add`,
+    `  operator.exec: { cmd: <program>, args: [<arg>, ...] }`,
+    `Each arg may contain {{key}} placeholders interpolated from world state (and any`,
+    `prompt-filled args) at run time. A command that prints a JSON object on stdout has`,
+    `those fields available to $result.<field> effects; a non-zero exit triggers a replan.`,
+    `Omit exec for steps that are not safe/deterministic to shell out — they dry-run.`,
   ].join("\n");
 }
 

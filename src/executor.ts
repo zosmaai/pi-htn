@@ -70,7 +70,11 @@ export async function executeDomain(yaml: YamlDomain, opts: ExecuteOptions): Pro
           args = await opts.smallModel.complete({ prompt, worldState: ctx.WorldState });
           opts.logger?.smallModel(compiledTask.Name, prompt, args);
         }
-        const result = await opts.tools.invoke(tool, resolveArgs(args, ctx.WorldState));
+        const result = await opts.tools.invoke(
+          tool,
+          resolveArgs(args, ctx.WorldState),
+          ctx.WorldState as Record<string, unknown>,
+        );
 
         // Apply literal effects FIRST (e.g. replied:true, and the placeholder
         // ticketId:"$result.id"), THEN override $result.* keys with the real tool

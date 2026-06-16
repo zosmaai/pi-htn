@@ -4,10 +4,10 @@ import { buildAuthorPrompt } from "./author.ts";
 import { extractTrace } from "./recorder.ts";
 import { authorCandidates } from "./commands/author.ts";
 import { executeDomain } from "./executor.ts";
-import { ToolRegistry } from "./toolRegistry.ts";
+import { buildExecRegistry } from "./exec.ts";
 import { JsonlLogger } from "./log.ts";
 import { completeText, PiSmallModel, type ModelLike, type RegistryLike } from "./commands/piModel.ts";
-import type { WorldState, YamlDomain } from "./types.ts";
+import type { WorldState } from "./types.ts";
 
 const N_CANDIDATES = 3;
 
@@ -19,18 +19,6 @@ function parseInput(parts: string[]): WorldState {
     if (i > 0) ws[p.slice(0, i)] = p.slice(i + 1);
   }
   return ws;
-}
-
-// Collect every operator.tool the domain references (for the dry-run registry).
-function collectTools(yaml: YamlDomain): string[] {
-  const tools = new Set<string>();
-  const walk = (n: unknown): void => {
-    const node = n as { operator?: { tool: string }; tasks?: unknown[] };
-    if (node.operator?.tool) tools.add(node.operator.tool);
-    node.tasks?.forEach(walk);
-  };
-  walk(yaml.root);
-  return [...tools];
 }
 
 const extension: ExtensionFactory = (pi: ExtensionAPI) => {
@@ -89,18 +77,21 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           const yaml = store.load(name);
           const input = parseInput(rest.slice(1));
 
-          // Extensions can't invoke pi's tools directly, so v0.1 binds a safe dry-run
-          // registry: each tool echoes its args (and is logged). Proves the executor +
-          // small model live without side effects. Real tool binding is the next step.
-          const tools = new ToolRegistry();
-          for (const t of collectTools(yaml))
-            tools.register(t, async (a) => ({ dryRun: true, tool: t, args: a }));
+          // Extensions can't invoke pi's own tools, but pi.exec() runs real shell.
+          // Operators with an `exec:` block execute for real; operators without one
+          // fall back to a safe dry-run echo. Mixed domains are fine.
+          const { tools, live, dryRun } = buildExecRegistry(yaml, async (cmd, a) => {
+            const r = await pi.exec(cmd, a);
+            return { stdout: r.stdout, stderr: r.stderr, code: r.code, killed: r.killed };
+          });
 
           const smallModel = model
             ? new PiSmallModel(model, registry, signal)
             : { async complete() { return {}; } };
 
-          ui.notify(`Running '${name}' (dry-run tools)…`, "info");
+          const mode =
+            live.length === 0 ? "dry-run" : dryRun.length === 0 ? "live" : `live: ${live.join(",")}`;
+          ui.notify(`Running '${name}' (${mode})…`, "info");
           const result = await executeDomain(yaml, { input, tools, smallModel, logger });
           const steps = result.steps.map((s) => `${s.task}→${s.tool}`).join(", ") || "(none)";
           const ws = JSON.stringify(result.finalWorldState);

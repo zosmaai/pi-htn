@@ -31,7 +31,9 @@ See `docs/superpowers/specs/` for the full design and the ToT-vs-HTN positioning
   **passing** one (best-of-N; the symbolic validator is the hard gate).
 - `/htn run <name> [input]` — compile the stored YAML to a GamePlanHTN domain, plan, and execute
   each primitive: the harness calls the bound tool deterministically; the small model only fills
-  arguments / confirms (execution **mode B**).
+  arguments / confirms (execution **mode B**). Operators with an `exec:` block run for **real**
+  via `pi.exec()`; operators without one fall back to a safe **dry-run** echo (mixed domains OK).
+  The run notice reports the mode (`live` / `dry-run` / `live: <tools>`).
 - `/htn list` — list stored domains.
 
 ## Domain schema (YAML, data — never code)
@@ -61,7 +63,19 @@ root:
 - **Predicate DSL:** `{ eq: [key, value] }`, `{ has: key }`, `{ not: <predicate> }`.
 - **Effects:** `{ set: { key: literal } }`, or `{ set: { key: "$result.<path>" } }` to bind a
   tool result into world state.
-- **Templates:** `{{key}}` in a prompt/arg is rendered from world state at execution time.
+- **Templates:** `{{key}}` in a prompt/arg/exec-arg is rendered from world state at execution time.
+- **Real execution:** add `exec: { cmd, args }` to an operator to run a deterministic shell
+  command. Each arg is interpolated against `{ ...worldState, ...promptFilledArgs }` (args win).
+  Stdout that is a JSON object is exposed to `$result.<field>` effects; a non-zero exit throws
+  so the executor replans (and trips the circuit breaker after `maxReplans`). Example:
+
+  ```yaml
+  - name: bump
+    operator:
+      tool: bump
+      exec: { cmd: bash, args: ["-c", "echo {{item}} >> ~/tally.log && wc -l < ~/tally.log"] }
+    effects: [{ set: { total: "$result.total" } }]
+  ```
 
 ## Architecture
 

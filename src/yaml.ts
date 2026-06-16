@@ -10,9 +10,15 @@ function validateNode(n: TaskNode, path: string): void {
       throw new Error(`Compound '${n.name}' at ${path} must have at least one task`);
     (n as CompoundNode).tasks.forEach((c, i) => validateNode(c, `${path}.${n.name}[${i}]`));
   } else {
-    const op = (n as { operator?: { tool?: string } }).operator;
+    const op = (n as { operator?: { tool?: string; exec?: { cmd?: unknown; args?: unknown } } }).operator;
     if (!op || typeof op.tool !== "string")
       throw new Error(`Primitive '${n.name}' at ${path} must have operator.tool`);
+    if (op.exec !== undefined) {
+      if (typeof op.exec.cmd !== "string" || op.exec.cmd.length === 0)
+        throw new Error(`Primitive '${n.name}' at ${path} operator.exec.cmd must be a non-empty string`);
+      if (op.exec.args !== undefined && !Array.isArray(op.exec.args))
+        throw new Error(`Primitive '${n.name}' at ${path} operator.exec.args must be an array of strings`);
+    }
   }
 }
 
