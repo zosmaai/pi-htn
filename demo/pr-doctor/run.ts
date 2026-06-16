@@ -33,8 +33,9 @@ function arg(flag: string, def?: string): string | undefined {
 }
 const REPO = arg("--repo", join(process.env.HOME ?? "", "code/htn-demos/pr-doctor-demo"))!;
 const PR = arg("--pr", "42")!;
-const MODEL = arg("--model", "qwopus-4b-coder")!;
-const BASE = arg("--base", "http://localhost:8080/v1")!;
+// Default to the shared devserver (keeps inference off the local laptop).
+const MODEL = arg("--model", "qwopus-coder-9b")!;
+const BASE = arg("--base", "http://devserver.zosma.ai:8010/v1")!;
 const FAKE = process.argv.includes("--fake");
 
 // Real shell bound to the demo repo. Mirrors pi.exec's ExecResult shape.

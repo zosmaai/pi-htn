@@ -44,7 +44,7 @@ const GOOD_IMAGE = arg("--good-image", "nginx:1.27-alpine")!;
 const BAD_IMAGE = arg("--bad-image", "nginx:9.9.9-htndemo-bad")!;
 // Default to the shared devserver (keeps the executor off the local laptop).
 const MODEL = arg("--model", "qwopus-coder-9b")!;
-const BASE = arg("--base", "http://devserver.zosma.ai:8001/v1")!;
+const BASE = arg("--base", "http://devserver.zosma.ai:8010/v1")!;
 const FAKE = has("--fake");
 
 // Plain spawn -> { out, code } for setup/break steps.

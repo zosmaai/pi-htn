@@ -35,7 +35,11 @@ export function parseModelJson(raw: string): Record<string, unknown> {
   }
 }
 
-// OpenAI-compatible client for a local llama.cpp server (mirrors tally-harness pattern).
+import { DEFAULT_MODEL_BASE, DEFAULT_MODEL_ID } from "./config.ts";
+
+// OpenAI-compatible client for any llama.cpp / vLLM server. Defaults to the
+// shared Zosma devserver (config.ts) so inference stays off the local laptop;
+// pass an explicit baseUrl/model for a local llama-swap.
 export class LlamaSmallModel implements SmallModelClient {
   // Reasoning models (e.g. qwopus-4b-coder) otherwise emit a HUGE
   // `reasoning_content` chain (18k+ tokens) before the JSON answer ever lands
@@ -43,8 +47,8 @@ export class LlamaSmallModel implements SmallModelClient {
   // fails JSON.parse. We disable thinking (`enable_thinking: false`) so the
   // model answers directly; `maxTokens` then only needs to cover the JSON.
   constructor(
-    private baseUrl = "http://localhost:8080/v1",
-    private model = "local",
+    private baseUrl = DEFAULT_MODEL_BASE,
+    private model = DEFAULT_MODEL_ID,
     private maxTokens = 1024,
     private enableThinking = false,
   ) {}
