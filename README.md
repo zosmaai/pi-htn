@@ -34,7 +34,56 @@ See `docs/superpowers/specs/` for the full design and the ToT-vs-HTN positioning
   arguments / confirms (execution **mode B**). Operators with an `exec:` block run for **real**
   via `pi.exec()`; operators without one fall back to a safe **dry-run** echo (mixed domains OK).
   The run notice reports the mode (`live` / `dry-run` / `live: <tools>`).
+- `/htn watch <prNumber> [domain]` — watch a PR and **heal its CI until merge-ready** (see below).
 - `/htn list` — list stored domains.
+
+## Self-learning PR watcher (v0.2)
+
+> **Every time a PR is raised, watch it and fix the actions until it's ready to merge.**
+
+`/htn watch <pr>` (in-session) or the headless `pi-htn-watch` CLI (cron/CI) runs this loop:
+
+```
+read `gh pr checks` ──▶ green/none ─▶ merge-ready ✓
+        │
+        ├─ pending ─▶ wait (poll) ─▶ re-check
+        │
+        └─ red ─▶ classify failure ─▶ run repair-ladder HTN ─▶ push fix ─▶ re-check
+                       │
+                       │   the HTN backtracks ACROSS rounds: each tried rung is
+                       │   excluded via `tried_<id>`, so the planner climbs to the
+                       │   next rung until checks go green or the budget is
+                       │   exhausted → escalate to a human
+                       ▼
+              record outcome to the playbook  ◀── self-learning memory
+```
+
+**Self-learning.** Every `{failureClass → strategy → ok}` outcome is appended to
+`~/.pi-htn/playbook.jsonl`. The watcher ranks strategies per failure class by smoothed success
+rate and **tries the historically-best one first** — the more PRs it heals, the faster it
+converges. It *uses* what it learns automatically; no re-training, just inspectable data.
+
+**Reusable, per-repo domains.** The repair ladder resolves most-specific-first:
+`<repo>/.pi-htn/<name>.yaml` → your global store → the shipped built-in `pr-ci.yaml`. Drop a
+`.pi-htn/pr-ci.yaml` into any repo to give it project-specific repair rungs; the ladder travels
+with the repo.
+
+```bash
+npx pi-htn-watch --repo /path/to/repo --pr 123          # one PR
+npx pi-htn-watch --repo /path/to/repo --all             # every open PR, once
+npx pi-htn-watch --repo /path/to/repo --all --interval 60   # poll forever / cron
+```
+
+## Model endpoint (runs off your laptop)
+
+Inference defaults to the shared **Zosma devserver** so it never cooks the local machine:
+
+```
+PI_HTN_MODEL_BASE   default http://devserver.zosma.ai:8010/v1
+PI_HTN_MODEL        default qwopus-coder-9b
+```
+
+Override per-process with those env vars, or `--base` / `--model` on any runner (`src/config.ts`).
 
 ## Domain schema (YAML, data — never code)
 
@@ -109,9 +158,10 @@ npm test        # vitest, fully offline (deterministic core needs no live model)
 npm run typecheck
 ```
 
-## Roadmap (v0.2, not built here)
+## Roadmap
 
-Auto-observation / auto-authoring; checkpoint-retry + parallel small-model search; HTN
-selection/matching + vector-db retrieval by task similarity; LLM advisory candidate scoring;
-**merge candidates into one action tree** (Tree-Planner style) instead of best-of-N
-select-and-discard.
+- **Auto-observation / auto-authoring** — watch sessions and propose domains without `/htn author`.
+- **Per-round local verify + checkpoint-retry** — re-run the repo's own tests between rungs.
+- HTN selection/matching + vector-db retrieval by task similarity; LLM advisory candidate scoring;
+  **merge candidates into one action tree** (Tree-Planner style) instead of best-of-N select-and-discard.
+- Playbook-driven rung *reordering* (not just a prior) and a `/htn playbook` inspector.
