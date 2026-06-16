@@ -1,0 +1,9 @@
+domain: broken
+worldState: { intent: received }
+root:
+  type: select
+  tasks:
+    - name: only-branch
+      conditions: [{ eq: [intent, impossible] }]
+      operator: { tool: noop.tool }
+      effects: [{ set: { done: true } }]
