@@ -14,7 +14,7 @@ export function renderTemplate(tpl: string, ws: Record<string, unknown>): string
 export class FakeSmallModel implements SmallModelClient {
   private i = 0;
   constructor(private scripted: Record<string, unknown>[]) {}
-  async complete(): Promise<Record<string, unknown>> {
+  async complete(_req: SmallModelRequest): Promise<Record<string, unknown>> {
     return this.scripted[this.i++] ?? {};
   }
 }
