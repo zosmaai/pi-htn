@@ -1,0 +1,85 @@
+# k8s-medic — self-heal a broken Kubernetes deployment with a small model + HTN.
+#
+# Scenario: a deployment is wedged (e.g. ImagePullBackOff from a bad image tag).
+# This domain drives the remediation on a REAL cluster via kubectl:
+#
+#   * The model does the NARROW work: it reads the diagnosis (pod failure reason
+#     + current image) and proposes a concrete remediation — a corrected,
+#     pullable container image. That proposal is HOISTED to plan input
+#     (`action` + `image`) because the executor plans the whole domain up-front;
+#     a mid-plan $result can't gate a `select`.
+#   * The HTN owns STRUCTURE + BACKTRACKING. Each rung applies a remediation
+#     then verifies the rollout (verify throws if the rollout doesn't go Ready →
+#     executor replans). The just-tried rung is excluded by its *_tried guard,
+#     so the planner climbs to the next.
+#   * Reliability is structural: rung 1 trusts the model's fix; rung 2 is a
+#     deterministic restore-to-last-known-good-image safety net that GUARANTEES
+#     convergence even when the model is wrong.
+domain: k8s-medic
+worldState:
+  ns: ""
+  deploy: ""
+  scriptdir: ""
+  good_image: ""
+  action: null
+  image: ""
+  reason: ""
+  last_strategy: ""
+  model_tried: false
+  restore_tried: false
+  healthy: false
+  reported: false
+root:
+  name: k8s-medic
+  type: sequence
+  tasks:
+    - name: heal
+      type: select
+      conditions: [{ not: { eq: [healthy, true] } }]
+      tasks:
+        # rung 1 — apply the model's proposed image (its real remediation work).
+        - name: m-apply
+          type: sequence
+          conditions: [{ eq: [action, set-image] }, { not: { eq: [model_tried, true] } }]
+          tasks:
+            - name: apply-model
+              operator:
+                tool: kset
+                exec: { cmd: bash, args: ["{{scriptdir}}/apply-image.sh", "{{ns}}", "{{deploy}}", "{{image}}"] }
+              effects: [{ set: { model_tried: true, last_strategy: model-set-image } }]
+            - name: verify-model
+              operator:
+                tool: verify
+                exec: { cmd: bash, args: ["{{scriptdir}}/verify-rollout.sh", "{{ns}}", "{{deploy}}"] }
+              effects: [{ set: { healthy: true } }]
+        # rung 2 — deterministic restore to last-known-good image (safety net).
+        - name: m-restore
+          type: sequence
+          conditions: [{ not: { eq: [restore_tried, true] } }]
+          tasks:
+            - name: apply-restore
+              operator:
+                # NOTE: distinct tool name from rung 1. buildExecRegistry binds one
+                # exec spec per tool name (first wins), so two rungs that need
+                # DIFFERENT args must use DIFFERENT tool names.
+                tool: krestore
+                exec: { cmd: bash, args: ["{{scriptdir}}/apply-image.sh", "{{ns}}", "{{deploy}}", "{{good_image}}"] }
+              effects: [{ set: { restore_tried: true, last_strategy: restore-known-good } }]
+            - name: verify-restore
+              operator:
+                tool: verify
+                exec: { cmd: bash, args: ["{{scriptdir}}/verify-rollout.sh", "{{ns}}", "{{deploy}}"] }
+              effects: [{ set: { healthy: true } }]
+    # report — the model writes a one-sentence incident note; report.sh annotates
+    # the deployment with it (visible via kubectl describe / get -o yaml).
+    - name: report
+      conditions: [{ eq: [healthy, true] }, { not: { eq: [reported, true] } }]
+      operator:
+        tool: report
+        prompt: |
+          A Kubernetes deployment "{{deploy}}" in namespace "{{ns}}" was failing
+          with pods in state "{{reason}}". It was healed via the
+          "{{last_strategy}}" strategy. Write a single-sentence incident note.
+          Output JSON only: {"note":"<one sentence>"}
+        exec: { cmd: bash, args: ["{{scriptdir}}/report.sh", "{{ns}}", "{{deploy}}", "{{note}}"] }
+      effects: [{ set: { reported: true } }]
