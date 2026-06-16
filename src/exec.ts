@@ -1,6 +1,6 @@
-import type { YamlDomain, ExecSpec } from "./types.ts";
-import { ToolRegistry } from "./toolRegistry.ts";
 import { renderTemplate } from "./smallModel.ts";
+import { ToolRegistry } from "./toolRegistry.ts";
+import type { ExecSpec, YamlDomain } from "./types.ts";
 
 // Injected shell runner. In production this is pi.exec; in tests it's a fake.
 // Mirrors pi's ExecResult shape (stdout/stderr/code/killed).

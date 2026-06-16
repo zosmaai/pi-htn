@@ -21,11 +21,11 @@
  *     [--fake] [--no-break] [--cleanup]
  */
 import { spawn } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { buildExecRegistry, type ShellExec } from "../../src/exec.ts";
-import { executeDomain, type StepRecord } from "../../src/executor.ts";
-import { readFileSync } from "node:fs";
+import { type ShellExec, buildExecRegistry } from "../../src/exec.ts";
+import { type StepRecord, executeDomain } from "../../src/executor.ts";
 import { FakeSmallModel, LlamaSmallModel } from "../../src/smallModel.ts";
 import { loadDomain } from "../../src/yaml.ts";
 
@@ -52,8 +52,12 @@ function sh(cmd: string, args: string[]): Promise<{ out: string; code: number }>
   return new Promise((resolve) => {
     const p = spawn(cmd, args);
     let out = "";
-    p.stdout.on("data", (d) => (out += d));
-    p.stderr.on("data", (d) => (out += d));
+    p.stdout.on("data", (d) => {
+      out += d;
+    });
+    p.stderr.on("data", (d) => {
+      out += d;
+    });
     p.on("close", (code) => resolve({ out, code: code ?? 0 }));
   });
 }
@@ -64,8 +68,12 @@ function clusterShell(): ShellExec {
       const p = spawn(cmd, args);
       let stdout = "";
       let stderr = "";
-      p.stdout.on("data", (d) => (stdout += d));
-      p.stderr.on("data", (d) => (stderr += d));
+      p.stdout.on("data", (d) => {
+        stdout += d;
+      });
+      p.stderr.on("data", (d) => {
+        stderr += d;
+      });
       p.on("close", (code) => resolve({ stdout, stderr, code: code ?? 0 }));
     });
 }
@@ -78,13 +86,10 @@ const c = {
   yellow: (s: string) => `\x1b[33m${s}\x1b[0m`,
   bold: (s: string) => `\x1b[1m${s}\x1b[0m`,
 };
-const row = (label: string, val: string) =>
-  console.log(`  ${c.dim("▸")} ${label.padEnd(22, ".")} ${val}`);
+const row = (label: string, val: string) => console.log(`  ${c.dim("▸")} ${label.padEnd(22, ".")} ${val}`);
 
 async function main() {
-  console.log(
-    c.bold(`\n  k8s-medic — ${NS}/${DEPLOY}  (executor: ${FAKE ? "fake" : MODEL})\n`),
-  );
+  console.log(c.bold(`\n  k8s-medic — ${NS}/${DEPLOY}  (executor: ${FAKE ? "fake" : MODEL})\n`));
 
   // 0. Ensure namespace + a healthy deployment on the known-good image.
   await sh("bash", [
@@ -109,11 +114,7 @@ async function main() {
   row("diagnose", c.red(`${reason}`) + c.dim(`  (image=${image})`));
 
   // 3. Small model proposes a concrete remediation (HOISTED to plan input).
-  const classifyPrompt =
-    `A Kubernetes deployment is failing. Diagnosis: pods are in state "${reason}" ` +
-    `and the current container image is "${image}". Propose a corrected, valid, ` +
-    `publicly pullable image to roll out for this app. ` +
-    `Output JSON only: {"action":"set-image","image":"<image:tag>"}`;
+  const classifyPrompt = `A Kubernetes deployment is failing. Diagnosis: pods are in state "${reason}" and the current container image is "${image}". Propose a corrected, valid, publicly pullable image to roll out for this app. Output JSON only: {"action":"set-image","image":"<image:tag>"}`;
   const model = FAKE
     ? new FakeSmallModel([
         // deliberately propose ANOTHER bad image to force a backtrack
@@ -151,8 +152,7 @@ async function main() {
     if (args.some((a) => a.includes("verify-rollout.sh")) && res.code !== 0) {
       row("verify rollout", c.red("✗ not Ready"));
       console.log(
-        `  ${c.yellow("↩")} ${"backtrack".padEnd(22, ".")} ` +
-          c.dim("rung excluded; planner climbs to the safety net"),
+        `  ${c.yellow("↩")} ${"backtrack".padEnd(22, ".")} ${c.dim("rung excluded; planner climbs to the safety net")}`,
       );
       backtracks++;
     }
@@ -188,7 +188,9 @@ async function main() {
   } else {
     console.log(
       c.dim(`  inspect:  kubectl -n ${NS} get deploy/${DEPLOY} -o wide\n`) +
-        c.dim(`  incident: kubectl -n ${NS} get deploy/${DEPLOY} -o jsonpath='{.metadata.annotations.htn\\.medic/last-incident}'\n`) +
+        c.dim(
+          `  incident: kubectl -n ${NS} get deploy/${DEPLOY} -o jsonpath='{.metadata.annotations.htn\\.medic/last-incident}'\n`,
+        ) +
         c.dim(`  cleanup:  kubectl delete namespace ${NS}\n`),
     );
   }

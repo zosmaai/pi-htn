@@ -10,9 +10,16 @@ export type EffectSpec = { set: Record<string, string | number | boolean | null>
 // Optional real-execution binding. When present, /htn run executes the command
 // via pi.exec() instead of a dry-run echo. Each arg string supports {{key}}
 // interpolation against the merged { ...worldState, ...toolArgs } at call time.
-export interface ExecSpec { cmd: string; args?: string[] }
+export interface ExecSpec {
+  cmd: string;
+  args?: string[];
+}
 
-export interface Operator { tool: string; prompt?: string | null; exec?: ExecSpec }
+export interface Operator {
+  tool: string;
+  prompt?: string | null;
+  exec?: ExecSpec;
+}
 
 export interface PrimitiveNode {
   name: string;

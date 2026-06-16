@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { ToolRegistry } from "../src/toolRegistry.ts";
 
 test("resolves and invokes a registered tool", async () => {

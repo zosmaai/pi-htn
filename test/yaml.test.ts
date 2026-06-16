@@ -1,5 +1,5 @@
-import { test, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { expect, test } from "vitest";
 import { loadDomain } from "../src/yaml.ts";
 
 test("loads a valid domain", () => {

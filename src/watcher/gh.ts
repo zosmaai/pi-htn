@@ -1,7 +1,12 @@
 import type { ShellExec } from "../exec.ts";
 
 // One row from `gh pr checks <pr> --json name,state,bucket`.
-export interface CheckRow { name: string; state?: string; bucket?: string; workflow?: string }
+export interface CheckRow {
+  name: string;
+  state?: string;
+  bucket?: string;
+  workflow?: string;
+}
 
 export type CheckState = "green" | "red" | "pending" | "none";
 export interface ChecksSummary {
@@ -14,11 +19,20 @@ export interface PrView {
   number: number;
   headRefName: string;
   mergeable: string; // MERGEABLE | CONFLICTING | UNKNOWN
-  state: string;     // OPEN | MERGED | CLOSED
+  state: string; // OPEN | MERGED | CLOSED
 }
 
 const FAIL = new Set(["fail", "failure", "error", "cancelled", "canceled", "timed_out", "action_required"]);
-const PEND = new Set(["pending", "queued", "in_progress", "waiting", "requested", "neutral", "skipping", "stale"]);
+const PEND = new Set([
+  "pending",
+  "queued",
+  "in_progress",
+  "waiting",
+  "requested",
+  "neutral",
+  "skipping",
+  "stale",
+]);
 
 // Pure: collapse per-check rows into a single state. Order matters — any failure
 // makes the PR red; otherwise any pending keeps it pending; else green.
@@ -40,7 +54,11 @@ function tolerantJson<T>(stdout: string, fallback: T): T {
   if (!s) return fallback;
   const start = s.search(/[[{]/);
   if (start === -1) return fallback;
-  try { return JSON.parse(s.slice(start)) as T; } catch { return fallback; }
+  try {
+    return JSON.parse(s.slice(start)) as T;
+  } catch {
+    return fallback;
+  }
 }
 
 // Thin typed wrapper over the `gh` CLI, bound to a repo via the injected shell.
@@ -55,12 +73,25 @@ export class GhClient {
   }
 
   async view(pr: number | string): Promise<PrView | null> {
-    const r = await this.shell("gh", ["pr", "view", String(pr), "--json", "number,headRefName,mergeable,state"]);
+    const r = await this.shell("gh", [
+      "pr",
+      "view",
+      String(pr),
+      "--json",
+      "number,headRefName,mergeable,state",
+    ]);
     return tolerantJson<PrView | null>(r.stdout, null);
   }
 
   async listOpen(): Promise<PrView[]> {
-    const r = await this.shell("gh", ["pr", "list", "--state", "open", "--json", "number,headRefName,mergeable,state"]);
+    const r = await this.shell("gh", [
+      "pr",
+      "list",
+      "--state",
+      "open",
+      "--json",
+      "number,headRefName,mergeable,state",
+    ]);
     return tolerantJson<PrView[]>(r.stdout, []);
   }
 

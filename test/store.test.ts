@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
 import { mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { DomainStore } from "../src/store.ts";
 
 test("saves and loads a domain by name", () => {

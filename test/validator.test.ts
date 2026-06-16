@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
 import { readFileSync } from "node:fs";
-import { loadDomain } from "../src/yaml.ts";
+import { expect, test } from "vitest";
 import { validateDomain } from "../src/validator.ts";
+import { loadDomain } from "../src/yaml.ts";
 
 test("valid domain passes across synthetic states", () => {
   const yaml = loadDomain(readFileSync("test/fixtures/tally-triage.yaml", "utf8"));

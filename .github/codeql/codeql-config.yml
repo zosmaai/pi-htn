@@ -1,0 +1,7 @@
+name: "pi-htn CodeQL config"
+
+# Vendored third-party planner is out of scope for our security analysis.
+paths-ignore:
+  - vendor
+  - coverage
+  - test

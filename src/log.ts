@@ -1,6 +1,6 @@
 import { appendFileSync, mkdirSync } from "node:fs";
-import { join } from "node:path";
 import { homedir } from "node:os";
+import { join } from "node:path";
 
 // Structured JSONL logger. Two streams under ~/.pi-htn/logs/:
 //   smallmodel.jsonl  - every small-model call (prompt + parsed output)
@@ -15,7 +15,7 @@ export class JsonlLogger implements HtnLogger {
     mkdirSync(this.dir, { recursive: true });
   }
   private write(file: string, rec: Record<string, unknown>): void {
-    appendFileSync(join(this.dir, file), JSON.stringify({ ts: Date.now(), ...rec }) + "\n");
+    appendFileSync(join(this.dir, file), `${JSON.stringify({ ts: Date.now(), ...rec })}\n`);
   }
   smallModel(task: string, prompt: string | null | undefined, output: unknown): void {
     this.write("smallmodel.jsonl", { task, prompt: prompt ?? null, output });

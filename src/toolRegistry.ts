@@ -7,8 +7,12 @@ export type ToolFn = (
 
 export class ToolRegistry {
   private tools = new Map<string, ToolFn>();
-  register(name: string, fn: ToolFn): void { this.tools.set(name, fn); }
-  has(name: string): boolean { return this.tools.has(name); }
+  register(name: string, fn: ToolFn): void {
+    this.tools.set(name, fn);
+  }
+  has(name: string): boolean {
+    return this.tools.has(name);
+  }
   async invoke(
     name: string,
     args: Record<string, unknown>,

@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { extractTrace } from "../src/recorder.ts";
 
 test("extracts ordered tool calls from a session jsonl", () => {

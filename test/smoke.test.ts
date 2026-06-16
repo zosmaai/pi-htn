@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 // Vendored GamePlanHTN, re-exported via src/htn.ts (see that file for why).
 import htn from "../src/htn.ts";
 

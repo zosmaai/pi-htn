@@ -1,8 +1,8 @@
-import { test, expect } from "vitest";
 import { readFileSync } from "node:fs";
+import { expect, test } from "vitest";
+import { compileDomain, makeContext } from "../src/compiler.ts";
 import htn from "../src/htn.ts";
 import { loadDomain } from "../src/yaml.ts";
-import { compileDomain, makeContext } from "../src/compiler.ts";
 
 test("compiles tally domain into a GamePlanHTN Domain with a sound plan", () => {
   const yaml = loadDomain(readFileSync("test/fixtures/tally-triage.yaml", "utf8"));

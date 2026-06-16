@@ -1,11 +1,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { extractTrace } from "../recorder.ts";
 import { buildAuthorPrompt, extractYamlBlock } from "../author.ts";
+import type { HtnLogger } from "../log.ts";
+import { extractTrace } from "../recorder.ts";
+import { DomainStore } from "../store.ts";
+import type { WorldState, YamlDomain } from "../types.ts";
 import { validateDomain } from "../validator.ts";
 import { loadDomain } from "../yaml.ts";
-import { DomainStore } from "../store.ts";
-import type { HtnLogger } from "../log.ts";
-import type { YamlDomain, WorldState } from "../types.ts";
 
 export interface AuthorCandidate {
   index: number;

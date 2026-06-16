@@ -1,24 +1,34 @@
-import type { ExtensionAPI, ExtensionFactory, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { DomainStore } from "./store.ts";
+import type {
+  ExtensionAPI,
+  ExtensionCommandContext,
+  ExtensionFactory,
+} from "@earendil-works/pi-coding-agent";
 import { buildAuthorPrompt } from "./author.ts";
-import { extractTrace } from "./recorder.ts";
 import { authorCandidates } from "./commands/author.ts";
-import { executeDomain } from "./executor.ts";
-import { buildExecRegistry } from "./exec.ts";
-import { JsonlLogger } from "./log.ts";
-import { completeText, PiSmallModel, type ModelLike, type RegistryLike } from "./commands/piModel.ts";
-import { GhClient } from "./watcher/gh.ts";
-import { watchPr, defaultHeal } from "./watcher/watcher.ts";
-import { Playbook } from "./learn/playbook.ts";
-import { resolveDomainYaml } from "./domains.ts";
-import {
-  effectiveSettings, loadSettings, saveSettings, resetSettings,
-  SETTING_FIELDS, fieldByKey, coerceField, summarizeSettings,
-} from "./settings.ts";
 import { htnArgumentCompletions } from "./commands/complete.ts";
-import { loadDomain } from "./yaml.ts";
+import { type ModelLike, PiSmallModel, type RegistryLike, completeText } from "./commands/piModel.ts";
+import { resolveDomainYaml } from "./domains.ts";
+import { buildExecRegistry } from "./exec.ts";
 import type { ShellExec } from "./exec.ts";
+import { executeDomain } from "./executor.ts";
+import { Playbook } from "./learn/playbook.ts";
+import { JsonlLogger } from "./log.ts";
+import { extractTrace } from "./recorder.ts";
+import {
+  SETTING_FIELDS,
+  coerceField,
+  effectiveSettings,
+  fieldByKey,
+  loadSettings,
+  resetSettings,
+  saveSettings,
+  summarizeSettings,
+} from "./settings.ts";
+import { DomainStore } from "./store.ts";
 import type { WorldState } from "./types.ts";
+import { GhClient } from "./watcher/gh.ts";
+import { defaultHeal, watchPr } from "./watcher/watcher.ts";
+import { loadDomain } from "./yaml.ts";
 
 const N_CANDIDATES = 3;
 
@@ -73,11 +83,16 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           if (trace.length === 0)
             return ui.notify("No tool calls in this session to author from.", "warning");
 
-          ui.notify(`Authoring '${name}' from ${trace.length} tool calls — sampling ${N_CANDIDATES} candidates…`, "info");
+          ui.notify(
+            `Authoring '${name}' from ${trace.length} tool calls — sampling ${N_CANDIDATES} candidates…`,
+            "info",
+          );
           const prompt = buildAuthorPrompt(name, trace);
           const replies = await Promise.all(
             Array.from({ length: N_CANDIDATES }, () =>
-              completeText(model, registry, prompt, { temperature: 0.8, signal }).catch((e) => `ERROR: ${e.message}`),
+              completeText(model, registry, prompt, { temperature: 0.8, signal }).catch(
+                (e) => `ERROR: ${e.message}`,
+              ),
             ),
           );
           const { candidates, chosen } = authorCandidates(name, sessionFile, replies, logger);
@@ -86,7 +101,10 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
             return ui.notify(`No candidate passed validation. ${why}`, "error");
           }
           store.save(name, chosen.yamlText!);
-          ui.notify(`Saved domain '${name}' (candidate #${chosen.index}, score ${chosen.score}). Run with /htn run ${name}`, "info");
+          ui.notify(
+            `Saved domain '${name}' (candidate #${chosen.index}, score ${chosen.score}). Run with /htn run ${name}`,
+            "info",
+          );
           return;
         }
 
@@ -106,7 +124,11 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
 
           const smallModel = model
             ? new PiSmallModel(model, registry, signal)
-            : { async complete() { return {}; } };
+            : {
+                async complete() {
+                  return {};
+                },
+              };
 
           const mode =
             live.length === 0 ? "dry-run" : dryRun.length === 0 ? "live" : `live: ${live.join(",")}`;
@@ -136,7 +158,11 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           }
           if (key && vrest.length) {
             const field = fieldByKey(key);
-            if (!field) return ui.notify(`Unknown setting '${key}'. Keys: ${SETTING_FIELDS.map((f) => f.key).join(", ")}`, "warning");
+            if (!field)
+              return ui.notify(
+                `Unknown setting '${key}'. Keys: ${SETTING_FIELDS.map((f) => f.key).join(", ")}`,
+                "warning",
+              );
             try {
               saveSettings({ [field.key]: coerceField(field, vrest.join(" ")) });
               return ui.notify(summarizeSettings(effectiveSettings()), "info");
@@ -144,7 +170,8 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
               return ui.notify(`Invalid ${field.key}: ${(e as Error).message}`, "error");
             }
           }
-          if (!ctx.hasUI) return ui.notify("No interactive UI. Use: /htn settings <key> <value> | show | reset", "warning");
+          if (!ctx.hasUI)
+            return ui.notify("No interactive UI. Use: /htn settings <key> <value> | show | reset", "warning");
 
           // Interactive panel: pick a field -> edit -> persist, looping until Done.
           for (;;) {
@@ -155,7 +182,10 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
             const DONE = "Done";
             const choice = await ui.select("pi-htn settings", [...labels, RESET, DONE]);
             if (!choice || choice === DONE) break;
-            if (choice === RESET) { resetSettings(); continue; }
+            if (choice === RESET) {
+              resetSettings();
+              continue;
+            }
             const field = SETTING_FIELDS[labels.indexOf(choice)];
             if (!field) continue;
             const cur = String(file[field.key] ?? eff[field.key]);
@@ -186,12 +216,21 @@ const extension: ExtensionFactory = (pi: ExtensionAPI) => {
           const gh = new GhClient(shell);
           const smallModel = model
             ? new PiSmallModel(model, registry, signal)
-            : { async complete() { return {}; } };
+            : {
+                async complete() {
+                  return {};
+                },
+              };
           const heal = defaultHeal({ domain, shell, smallModel, playbook, repo, pr, logger, maxReplans: 6 });
           ui.notify(`Watching PR #${pr} with '${domainName}' (${resolved.kind})…`, "info");
           const res = await watchPr(
             { repo, pr, maxRounds: cfg.maxRounds, pollMs: cfg.pollSeconds * 1000 },
-            { gh, heal, playbook, onEvent: (e) => ui.notify(`#${pr} ${e.type} r${e.round}: ${e.message}`, "info") },
+            {
+              gh,
+              heal,
+              playbook,
+              onEvent: (e) => ui.notify(`#${pr} ${e.type} r${e.round}: ${e.message}`, "info"),
+            },
           );
           ui.notify(
             res.mergeReady

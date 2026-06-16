@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { Playbook, classifyFromChecks } from "../src/learn/playbook.ts";
 
 test("ranks strategies by smoothed success rate, best first", () => {

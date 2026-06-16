@@ -38,7 +38,7 @@ export function htnArgumentCompletions(prefix: string, domains: string[]): AcIte
   const tokens = lead.split(/\s+/).filter(Boolean);
   const sub = tokens[0] ?? "";
   const completingIndex = endsWithSpace ? tokens.length : Math.max(0, tokens.length - 1);
-  const cur = endsWithSpace ? "" : tokens[tokens.length - 1] ?? "";
+  const cur = endsWithSpace ? "" : (tokens[tokens.length - 1] ?? "");
 
   // First token: the subcommand itself.
   if (completingIndex === 0) return byPrefix(HTN_SUBCOMMANDS, cur);
@@ -47,19 +47,25 @@ export function htnArgumentCompletions(prefix: string, domains: string[]): AcIte
   if (completingIndex === 1) {
     if (sub === "settings") {
       const hits = byPrefix(SETTINGS_ARGS, cur);
-      return hits && hits.map((h) => ({ ...h, value: `settings ${h.value}` }));
+      return hits ? hits.map((h) => ({ ...h, value: `settings ${h.value}` })) : null;
     }
     if (sub === "run" || sub === "author") {
-      const hits = byPrefix(domains.map((d) => ({ value: d, label: d })), cur);
-      return hits && hits.map((h) => ({ ...h, value: `${sub} ${h.value}` }));
+      const hits = byPrefix(
+        domains.map((d) => ({ value: d, label: d })),
+        cur,
+      );
+      return hits ? hits.map((h) => ({ ...h, value: `${sub} ${h.value}` })) : null;
     }
     return null; // watch <pr>: the PR number isn't completable
   }
 
   // Third token: `watch <pr> <domain>`.
   if (completingIndex === 2 && sub === "watch") {
-    const hits = byPrefix(domains.map((d) => ({ value: d, label: d, description: "repair domain" })), cur);
-    return hits && hits.map((h) => ({ ...h, value: `watch ${tokens[1]} ${h.value}` }));
+    const hits = byPrefix(
+      domains.map((d) => ({ value: d, label: d, description: "repair domain" })),
+      cur,
+    );
+    return hits ? hits.map((h) => ({ ...h, value: `watch ${tokens[1]} ${h.value}` })) : null;
   }
 
   return null;

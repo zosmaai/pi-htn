@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
-import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { resolveDomainYaml } from "../src/domains.ts";
 import { loadDomain } from "../src/yaml.ts";
 
@@ -24,6 +24,7 @@ test("a repo's own .pi-htn/<name>.yaml wins over the built-in", () => {
 });
 
 test("throws a helpful error when nothing matches", () => {
-  expect(() => resolveDomainYaml("nope", { storeDir: mkdtempSync(join(tmpdir(), "htn-x-")) }))
-    .toThrow(/No domain 'nope'/);
+  expect(() => resolveDomainYaml("nope", { storeDir: mkdtempSync(join(tmpdir(), "htn-x-")) })).toThrow(
+    /No domain 'nope'/,
+  );
 });

@@ -1,10 +1,10 @@
-import type { GhClient, ChecksSummary } from "./gh.ts";
-import { classifyFromChecks, Playbook } from "../learn/playbook.ts";
-import { buildExecRegistry, type ShellExec } from "../exec.ts";
+import { type ShellExec, buildExecRegistry } from "../exec.ts";
 import { executeDomain } from "../executor.ts";
-import type { SmallModelClient } from "../smallModel.ts";
+import { type Playbook, classifyFromChecks } from "../learn/playbook.ts";
 import type { HtnLogger } from "../log.ts";
-import type { YamlDomain, WorldState } from "../types.ts";
+import type { SmallModelClient } from "../smallModel.ts";
+import type { WorldState, YamlDomain } from "../types.ts";
+import type { ChecksSummary, GhClient } from "./gh.ts";
 
 export interface HealOutcome {
   ok: boolean;
@@ -17,7 +17,12 @@ export interface HealOutcome {
 // ladder (cross-round backtracking, with gh re-checks as the verifier).
 // Injected so the watcher loop is testable without a real model or repo;
 // `defaultHeal` wires the real HTN engine.
-export type HealFn = (ctx: { failureClass: string; round: number; summary: ChecksSummary; tried: string[] }) => Promise<HealOutcome>;
+export type HealFn = (ctx: {
+  failureClass: string;
+  round: number;
+  summary: ChecksSummary;
+  tried: string[];
+}) => Promise<HealOutcome>;
 
 export interface WatchEvent {
   type: "checks" | "heal" | "done";
@@ -49,9 +54,9 @@ export interface WatchDeps {
 export interface WatchOptions {
   repo: string;
   pr: number | string;
-  maxRounds?: number;   // max heal attempts before escalating to a human
-  maxPolls?: number;    // max times to wait out "pending" checks before timing out
-  pollMs?: number;      // delay between re-checks while CI is pending
+  maxRounds?: number; // max heal attempts before escalating to a human
+  maxPolls?: number; // max times to wait out "pending" checks before timing out
+  pollMs?: number; // delay between re-checks while CI is pending
 }
 
 const sleepReal = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
@@ -100,11 +105,28 @@ export async function watchPr(opts: WatchOptions, deps: WatchDeps): Promise<Watc
     }
     heals++;
     const failureClass = classify(checks.failing);
-    emit({ type: "heal", round: heals, message: `red [${checks.failing.join(",")}] → class=${failureClass}` });
+    emit({
+      type: "heal",
+      round: heals,
+      message: `red [${checks.failing.join(",")}] → class=${failureClass}`,
+    });
     const outcome = await deps.heal({ failureClass, round: heals, summary: checks, tried: [...tried] });
     if (outcome.strategy && !tried.includes(outcome.strategy)) tried.push(outcome.strategy);
-    deps.playbook.record({ repo: opts.repo, pr: opts.pr, failureClass, strategy: outcome.strategy, ok: outcome.ok });
-    rounds.push({ round: heals, state: "red", failing: checks.failing, failureClass, strategy: outcome.strategy, ok: outcome.ok });
+    deps.playbook.record({
+      repo: opts.repo,
+      pr: opts.pr,
+      failureClass,
+      strategy: outcome.strategy,
+      ok: outcome.ok,
+    });
+    rounds.push({
+      round: heals,
+      state: "red",
+      failing: checks.failing,
+      failureClass,
+      strategy: outcome.strategy,
+      ok: outcome.ok,
+    });
 
     if (!outcome.ok) {
       const reason = `escalated:${outcome.error ?? "heal-failed"}`;

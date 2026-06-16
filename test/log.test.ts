@@ -1,7 +1,7 @@
-import { test, expect } from "vitest";
-import { mkdtempSync, readFileSync, existsSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { JsonlLogger } from "../src/log.ts";
 
 test("logs small-model outputs and failures to separate jsonl streams", () => {

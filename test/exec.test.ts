@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { buildExecRegistry, type ShellExec, type ShellResult } from "../src/exec.ts";
+import { describe, expect, it } from "vitest";
+import { type ShellExec, type ShellResult, buildExecRegistry } from "../src/exec.ts";
 import type { YamlDomain } from "../src/types.ts";
 
 const ok = (stdout: string): ShellResult => ({ stdout, stderr: "", code: 0, killed: false });
@@ -73,10 +73,7 @@ describe("buildExecRegistry", () => {
 
   it("falls back to a dry-run echo for operators without exec", async () => {
     const { shell } = spyShell(() => ok("{}"));
-    const { tools, live, dryRun } = buildExecRegistry(
-      domainWith({ tool: "noexec" }),
-      shell,
-    );
+    const { tools, live, dryRun } = buildExecRegistry(domainWith({ tool: "noexec" }), shell);
     expect(live).toEqual([]);
     expect(dryRun).toEqual(["noexec"]);
     const res = await tools.invoke("noexec", { a: 1 }, {});

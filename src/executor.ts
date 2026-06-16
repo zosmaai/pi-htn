@@ -1,9 +1,9 @@
-import type { YamlDomain, WorldState } from "./types.ts";
 import { compileDomain, makeContext } from "./compiler.ts";
-import type { ToolRegistry } from "./toolRegistry.ts";
+import type { HtnLogger } from "./log.ts";
 import type { SmallModelClient } from "./smallModel.ts";
 import { renderTemplate } from "./smallModel.ts";
-import type { HtnLogger } from "./log.ts";
+import type { ToolRegistry } from "./toolRegistry.ts";
+import type { WorldState, YamlDomain } from "./types.ts";
 
 const EXECUTING = "executing";
 
@@ -19,7 +19,7 @@ export interface ExecuteOptions {
   smallModel: SmallModelClient;
   maxReplans?: number;
   onStep?: (s: StepRecord) => void; // checkpoint hook (Task 7)
-  logger?: HtnLogger;               // optional observability (Task 5b)
+  logger?: HtnLogger; // optional observability (Task 5b)
 }
 export interface ExecuteResult {
   ok: boolean;
@@ -40,8 +40,7 @@ type PlanItem = { Name: string; applyEffects: (c: unknown) => void };
 function resolveArgs(operatorArgs: Record<string, unknown>, ws: WorldState): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(operatorArgs)) {
-    out[k] = typeof v === "string" && v.includes("{{")
-      ? renderTemplate(v, ws as Record<string, unknown>) : v;
+    out[k] = typeof v === "string" && v.includes("{{") ? renderTemplate(v, ws as Record<string, unknown>) : v;
   }
   return out;
 }
@@ -90,7 +89,12 @@ export async function executeDomain(yaml: YamlDomain, opts: ExecuteOptions): Pro
         failed = true;
         replans++;
         if (replans > maxReplans)
-          return { ok: false, steps, finalWorldState: ctx.WorldState, error: `circuit breaker: ${(e as Error).message}` };
+          return {
+            ok: false,
+            steps,
+            finalWorldState: ctx.WorldState,
+            error: `circuit breaker: ${(e as Error).message}`,
+          };
         break; // re-enter while loop -> replan
       }
     }
@@ -103,7 +107,11 @@ export async function executeDomain(yaml: YamlDomain, opts: ExecuteOptions): Pro
 function findBinding(yaml: YamlDomain, name: string): { tool: string; prompt?: string | null } {
   let found: { tool: string; prompt?: string | null } | undefined;
   const walk = (n: unknown): void => {
-    const node = n as { name?: string; operator?: { tool: string; prompt?: string | null }; tasks?: unknown[] };
+    const node = n as {
+      name?: string;
+      operator?: { tool: string; prompt?: string | null };
+      tasks?: unknown[];
+    };
     if (node.name === name && node.operator) found = node.operator;
     node.tasks?.forEach(walk);
   };
@@ -134,6 +142,9 @@ function locate(
   name: string,
 ): { effects?: { set: Record<string, unknown> }[] } | undefined {
   if (node.name === name) return node;
-  for (const c of (node.tasks ?? []) as (typeof node)[]) { const r = locate(c, name); if (r) return r; }
+  for (const c of (node.tasks ?? []) as (typeof node)[]) {
+    const r = locate(c, name);
+    if (r) return r;
+  }
   return undefined;
 }

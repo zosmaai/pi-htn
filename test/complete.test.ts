@@ -1,4 +1,4 @@
-import { test, expect } from "vitest";
+import { expect, test } from "vitest";
 import { htnArgumentCompletions } from "../src/commands/complete.ts";
 
 const labels = (r: ReturnType<typeof htnArgumentCompletions>) => (r ?? []).map((i) => i.label);
@@ -21,7 +21,9 @@ test("settings keys complete as full 'settings <key>' values", () => {
 test("run/author complete stored domain names", () => {
   const r = htnArgumentCompletions("run ", ["pr-ci", "tally-triage"])!;
   expect(r.map((i) => i.value)).toEqual(["run pr-ci", "run tally-triage"]);
-  expect(htnArgumentCompletions("author pr", ["pr-ci", "tally-triage"])!.map((i) => i.value)).toEqual(["author pr-ci"]);
+  expect(htnArgumentCompletions("author pr", ["pr-ci", "tally-triage"])!.map((i) => i.value)).toEqual([
+    "author pr-ci",
+  ]);
 });
 
 test("watch completes domain at the 3rd token, not the PR number", () => {
