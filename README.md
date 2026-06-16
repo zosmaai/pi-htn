@@ -26,6 +26,10 @@ See `docs/superpowers/specs/` for the full design and the ToT-vs-HTN positioning
 
 ## Commands
 
+Press **Tab** after `/htn ` to autocomplete subcommands, setting keys (`/htn settings →`),
+and stored domain names (`/htn run →`, `/htn watch <pr> →`).
+
+
 - `/htn author <name>` — read the current session's tool-call trace, ask the big model for
   **N candidate** YAML domains, validate each through the offline gate, and save the best
   **passing** one (best-of-N; the symbolic validator is the hard gate).

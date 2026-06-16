@@ -15,6 +15,7 @@ import {
   effectiveSettings, loadSettings, saveSettings, resetSettings,
   SETTING_FIELDS, fieldByKey, coerceField, summarizeSettings,
 } from "./settings.ts";
+import { htnArgumentCompletions } from "./commands/complete.ts";
 import { loadDomain } from "./yaml.ts";
 import type { ShellExec } from "./exec.ts";
 import type { WorldState } from "./types.ts";
@@ -34,6 +35,14 @@ function parseInput(parts: string[]): WorldState {
 const extension: ExtensionFactory = (pi: ExtensionAPI) => {
   pi.registerCommand("htn", {
     description: "Author and run reusable HTN domains",
+    // Tab-completion for subcommands, settings keys, and stored domain names.
+    getArgumentCompletions: (prefix: string) => {
+      try {
+        return htnArgumentCompletions(prefix, new DomainStore().list());
+      } catch {
+        return htnArgumentCompletions(prefix, []);
+      }
+    },
     handler: async (args: string, ctx: ExtensionCommandContext) => {
       // Capture ctx surfaces synchronously BEFORE any await (stale-ctx guard).
       const ui = ctx.ui;
