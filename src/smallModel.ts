@@ -19,6 +19,22 @@ export class FakeSmallModel implements SmallModelClient {
   }
 }
 
+// Small models often wrap JSON in ```json fences or add prose despite json_object
+// mode. Strip fences, then fall back to the outermost {...} block before parsing.
+export function parseModelJson(raw: string): Record<string, unknown> {
+  let s = raw.trim();
+  const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) s = fence[1].trim();
+  try {
+    return JSON.parse(s);
+  } catch {
+    const start = s.indexOf("{");
+    const end = s.lastIndexOf("}");
+    if (start !== -1 && end > start) return JSON.parse(s.slice(start, end + 1));
+    throw new Error(`small model returned non-JSON: ${raw.slice(0, 200)}`);
+  }
+}
+
 // OpenAI-compatible client for a local llama.cpp server (mirrors tally-harness pattern).
 export class LlamaSmallModel implements SmallModelClient {
   constructor(private baseUrl = "http://localhost:8080/v1", private model = "local") {}
@@ -34,6 +50,6 @@ export class LlamaSmallModel implements SmallModelClient {
       }),
     });
     const data = (await res.json()) as { choices: { message: { content: string } }[] };
-    return JSON.parse(data.choices[0].message.content);
+    return parseModelJson(data.choices[0].message.content);
   }
 }

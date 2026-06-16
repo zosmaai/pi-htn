@@ -1,0 +1,68 @@
+domain: pr-doctor
+# classify is HOISTED to input.failure_class (the runner calls the tiny model once
+# before planning, because the executor plans the whole domain up-front and a
+# mid-plan $result effect can't gate a select). The HTN owns the repair ladder and
+# backtracks structurally: each failed verify trips a replan, the just-tried rung is
+# excluded by its *_tried guard, and the planner decomposes to the next rung.
+worldState:
+  pr: ""
+  failure_class: null
+  last_strategy: ""
+  rerun_tried: false
+  lint_tried: false
+  revert_tried: false
+  fixed: false
+  reported: false
+root:
+  name: pr-doctor
+  type: sequence
+  tasks:
+    - name: repair
+      type: select
+      conditions: [{ not: { eq: [fixed, true] } }]
+      tasks:
+        # rung 1 — only when the tiny model guessed "flaky"
+        - name: m-rerun
+          type: sequence
+          conditions: [{ eq: [failure_class, flaky] }, { not: { eq: [rerun_tried, true] } }]
+          tasks:
+            - name: apply-rerun
+              operator: { tool: rerun, exec: { cmd: bash, args: ["scripts/apply-rerun.sh"] } }
+              effects: [{ set: { rerun_tried: true, last_strategy: rerun } }]
+            - name: verify-rerun
+              operator: { tool: verify, exec: { cmd: bash, args: ["scripts/verify-green.sh"] } }
+              effects: [{ set: { fixed: true } }]
+        # rung 2 — generic lint/format pass
+        - name: m-lint
+          type: sequence
+          conditions: [{ not: { eq: [lint_tried, true] } }]
+          tasks:
+            - name: apply-lint
+              operator: { tool: lint, exec: { cmd: bash, args: ["scripts/apply-lint.sh"] } }
+              effects: [{ set: { lint_tried: true, last_strategy: lint-fix } }]
+            - name: verify-lint
+              operator: { tool: verify, exec: { cmd: bash, args: ["scripts/verify-green.sh"] } }
+              effects: [{ set: { fixed: true } }]
+        # rung 3 — guaranteed-green fallback: revert the breaking commit
+        - name: m-revert
+          type: sequence
+          conditions: [{ not: { eq: [revert_tried, true] } }]
+          tasks:
+            - name: apply-revert
+              operator: { tool: revert, exec: { cmd: bash, args: ["scripts/apply-revert.sh"] } }
+              effects: [{ set: { revert_tried: true, last_strategy: revert } }]
+            - name: verify-revert
+              operator: { tool: verify, exec: { cmd: bash, args: ["scripts/verify-green.sh"] } }
+              effects: [{ set: { fixed: true } }]
+    # report — tiny model writes the PR comment; tool posts it (local stand-in)
+    - name: report
+      conditions: [{ eq: [fixed, true] }, { not: { eq: [reported, true] } }]
+      operator:
+        tool: report
+        prompt: |
+          The CI was red and an automated repair just made it green.
+          The repair strategy used was "{{last_strategy}}".
+          Write a single-sentence PR comment stating what was done.
+          Output JSON only: {"comment":"<one sentence>"}
+        exec: { cmd: bash, args: ["scripts/report.sh", "{{pr}}", "{{comment}}"] }
+      effects: [{ set: { reported: true } }]
