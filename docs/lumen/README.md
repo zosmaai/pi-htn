@@ -9,9 +9,9 @@ Interactive, **offline-playable** documentation generated with the [`lumen`](htt
 
 | Doc | What it covers | Rendered | Source |
 |---|---|---|---|
-| 🗂️ **Gallery** | Landing page linking every visual doc | [Pages](https://zosmaai.github.io/pi-htn/lumen/) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/index.html) | [`index.html`](./index.html) |
-| 🏛️ **System Architecture** | 6 tabs + 6 subsystem diagrams + the 3 domains + fact-check ledger | [Pages](https://zosmaai.github.io/pi-htn/lumen/architecture.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/architecture.html) | [`architecture.html`](./architecture.html) |
-| 🎞️ **Decomposition & LLM Artifacts** | 18-slide deck: HTN task trees + the 3 inference artifacts | [Pages](https://zosmaai.github.io/pi-htn/lumen/decomposition-slides.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/decomposition-slides.html) | [`decomposition-slides.html`](./decomposition-slides.html) |
+| 🗂️ **Gallery** | Landing page linking every visual doc | [Pages](https://zosmaai.github.io/pi-htn/lumen/) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/index.html) | [`index.html`](./index.html) |
+| 🏛️ **System Architecture** | 6 tabs + 6 subsystem diagrams + the 3 domains + fact-check ledger | [Pages](https://zosmaai.github.io/pi-htn/lumen/architecture.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/architecture.html) | [`architecture.html`](./architecture.html) |
+| 🎞️ **Decomposition & LLM Artifacts** | 18-slide deck: HTN task trees + the 3 inference artifacts | [Pages](https://zosmaai.github.io/pi-htn/lumen/decomposition-slides.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/decomposition-slides.html) | [`decomposition-slides.html`](./decomposition-slides.html) |
 
 > The **Pages** links work once GitHub Pages is enabled (see below). The **preview** links work immediately — `htmlpreview.github.io` proxies the raw file and runs it in your browser, which is fine because these docs are fully self-contained.
 
@@ -22,10 +22,10 @@ Pages gives you stable, fast `https://zosmaai.github.io/pi-htn/lumen/…` URLs.
 **Option A — serve `/docs` from a branch (no workflow):**
 1. Repo **Settings → Pages**
 2. **Source:** *Deploy from a branch*
-3. **Branch:** `master`, **Folder:** `/docs`
+3. **Branch:** `main`, **Folder:** `/docs`
 4. Save. Your docs land at `https://zosmaai.github.io/pi-htn/lumen/`.
 
-**Option B — GitHub Actions** (already wired): the [`pages.yml`](../../.github/workflows/pages.yml) workflow publishes `docs/` on every push to `master`. Just set **Settings → Pages → Source: GitHub Actions**.
+**Option B — GitHub Actions** (already wired): the [`pages.yml`](../../.github/workflows/pages.yml) workflow publishes `docs/` on every push to `main`. Just set **Settings → Pages → Source: GitHub Actions**.
 
 ## Adding a new lumen doc
 

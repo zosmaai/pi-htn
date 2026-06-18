@@ -167,9 +167,9 @@ Interactive, offline-playable docs live in [`docs/lumen/`](docs/lumen/) — see 
 
 | Doc | Rendered |
 |---|---|
-| 🗂️ **Gallery** — landing page for every visual doc | [Pages](https://zosmaai.github.io/pi-htn/lumen/) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/index.html) |
-| 🏛️ **System Architecture** — 6 tabs, 6 subsystem diagrams, the 3 domains, fact-check | [Pages](https://zosmaai.github.io/pi-htn/lumen/architecture.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/architecture.html) |
-| 🎞️ **Decomposition & LLM Artifacts** — 18-slide deck on the HTN trees + 3 inference artifacts | [Pages](https://zosmaai.github.io/pi-htn/lumen/decomposition-slides.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/master/docs/lumen/decomposition-slides.html) |
+| 🗂️ **Gallery** — landing page for every visual doc | [Pages](https://zosmaai.github.io/pi-htn/lumen/) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/index.html) |
+| 🏛️ **System Architecture** — 6 tabs, 6 subsystem diagrams, the 3 domains, fact-check | [Pages](https://zosmaai.github.io/pi-htn/lumen/architecture.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/architecture.html) |
+| 🎞️ **Decomposition & LLM Artifacts** — 18-slide deck on the HTN trees + 3 inference artifacts | [Pages](https://zosmaai.github.io/pi-htn/lumen/decomposition-slides.html) · [preview](https://htmlpreview.github.io/?https://github.com/zosmaai/pi-htn/blob/main/docs/lumen/decomposition-slides.html) |
 
 > Clicking an `.html` file on GitHub shows **source**, not the rendered page. Use a **Rendered** link.
 > *Pages* links activate once GitHub Pages is enabled (`Settings → Pages`); *preview* links work immediately.
