@@ -1,0 +1,3376 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pi-htn — Architecture</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#161922; --panel2:#1c2030; --ink:#e8e6df; --muted:#9aa0ab;
+    --line:#2a2f3d; --amber:#e3b341; --cyan:#56b6c2; --purple:#b07cff; --green:#6cc070; --red:#e06c75;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --mono:'SF Mono','JetBrains Mono',ui-monospace,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--serif);line-height:1.62;font-size:17px}
+  a{color:var(--cyan);text-decoration:none} a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:#0a0c10;border:1px solid var(--line);
+    border-radius:4px;padding:.08em .38em;color:#cdd3df}
+  pre{font-family:var(--mono);font-size:13px;line-height:1.5;background:#0a0c10;border:1px solid var(--line);
+    border-radius:8px;padding:14px 16px;overflow:auto;color:#cdd3df}
+  header.top{padding:34px 40px 18px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#13161e,#0f1115)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--amber)}
+  h1{font-size:34px;margin:.18em 0 .12em;letter-spacing:-.01em}
+  .sub{color:var(--muted);font-size:16px;max-width:74ch}
+  nav.tabs{display:flex;gap:2px;padding:0 40px;border-bottom:1px solid var(--line);
+    background:var(--panel);position:sticky;top:0;z-index:20;flex-wrap:wrap}
+  nav.tabs button{font-family:var(--mono);font-size:12.5px;letter-spacing:.04em;color:var(--muted);
+    background:none;border:none;border-bottom:2px solid transparent;padding:14px 16px;cursor:pointer}
+  nav.tabs button:hover{color:var(--ink)}
+  nav.tabs button.active{color:var(--amber);border-bottom-color:var(--amber)}
+  main{max-width:1020px;margin:0 auto;padding:34px 40px 90px}
+  .tab{display:none} .tab.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  h2{font-size:25px;margin:1.4em 0 .35em;letter-spacing:-.01em}
+  h2:first-child{margin-top:.2em}
+  h3{font-family:var(--mono);font-size:13px;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--cyan);margin:1.8em 0 .5em}
+  p{max-width:78ch} ul{max-width:78ch}
+  .lead{font-size:19px;color:#d8d6cf}
+  iframe.diagram{width:100%;border:1px solid var(--line);border-radius:10px;background:#0d0f14;
+    margin:18px 0 6px;display:block}
+  .cap{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin:0 0 22px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:16px 0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+  .card.accent{border-left:3px solid var(--amber)}
+  .card h4{margin:.1em 0 .3em;font-size:16px}
+  .card .k{font-family:var(--mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  .pill{font-family:var(--mono);font-size:11px;padding:.12em .55em;border-radius:20px;border:1px solid var(--line);color:var(--muted)}
+  .sect{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:22px 26px;margin:20px 0}
+  .sect.amber{border-top:3px solid var(--amber)} .sect.cyan{border-top:3px solid var(--cyan)}
+  .sect.green{border-top:3px solid var(--green)} .sect.purple{border-top:3px solid var(--purple)}
+  .sect.red{border-top:3px solid var(--red)}
+  .tag{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+    text-transform:uppercase;padding:.18em .6em;border-radius:5px;margin-right:6px}
+  .t-amber{background:rgba(227,179,65,.14);color:var(--amber)}
+  .t-cyan{background:rgba(86,182,194,.14);color:var(--cyan)}
+  .t-green{background:rgba(108,192,112,.14);color:var(--green)}
+  .t-purple{background:rgba(176,124,255,.14);color:var(--purple)}
+  .t-red{background:rgba(224,108,117,.14);color:var(--red)}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:var(--panel2);font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .filepath{font-family:var(--mono);font-size:12px;color:var(--amber)}
+  .decision{border-left:3px solid var(--line);padding:2px 0 2px 18px;margin:22px 0}
+  .decision .dq{font-size:18px;font-weight:600;margin:0 0 6px}
+  .decision .row{display:flex;gap:24px;flex-wrap:wrap;margin-top:8px}
+  .decision .row div{flex:1;min-width:240px}
+  .decision .lab{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+  hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+  .footer{color:var(--muted);font-size:13px;font-family:var(--mono);padding:24px 40px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="eyebrow">Architecture Document · pi extension</div>
+  <h1>pi-htn</h1>
+  <p class="sub">Author reusable <strong>HTN domains</strong> from a session's tool-call trace, then replay them
+  deterministically with a small/local model. One expensive planning call; many cheap, grounded execution calls.
+  Priorities, in order: <em>Reliability &gt; Cost &gt; Capability &gt; Reusability.</em></p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="components">Components</button>
+  <button data-tab="flows">Flows</button>
+  <button data-tab="domains">Domains</button>
+  <button data-tab="decisions">Decisions</button>
+  <button data-tab="factcheck-sec">Verify</button>
+</nav>
+
+<main>
+
+<!-- ===================== OVERVIEW ===================== -->
+<section class="tab active" id="overview">
+  <p class="lead">pi-htn turns a one-off agent session into a <strong>reusable, validated plan</strong>.
+  The big model authors a Hierarchical Task Network as <strong>YAML data — never code</strong>; an offline
+  symbolic validator proves it decomposes soundly before it can be saved; and a trusted TypeScript runtime
+  then replays it, calling bound tools deterministically while a small model only fills per-task arguments.</p>
+
+  <iframe class="diagram" height="500" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>pi-htn — System Overview</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 1 / 1;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 18%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 8px 10px 9px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.hub  { --w: 22%; }
+  .fgraph-node.pill { border-radius: 999px; padding: 10px 14px; }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  /* shape variants reused from linear-flow CSS */
+  .fgraph-node.cylinder {
+    border: none;
+    border-left: 1.5px solid var(--border-bright);
+    border-right: 1.5px solid var(--border-bright);
+    border-radius: 0;
+    background: var(--bg-card);
+    padding: 14px 10px;
+  }
+  .fgraph-node.cylinder.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cylinder.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.cylinder.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.cylinder.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.hexagon {
+    clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+    padding: 10px 16px;
+  }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Hub &amp;amp; spokes</div>
+  <h1>pi-htn — System Overview</h1>
+  <p class=&quot;header-subtitle&quot;>One /htn extension binds five subsystems around a YAML-data plan core</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Radial hub: pi-htn — System Overview. Hub /htn extension connected to spokes: Authoring, Compile + Plan, Execution Runtime, PR Watcher, Domain Store, Settings + Config.&quot;>
+
+  <!-- ── EDGES (hub ↔ spokes) ──────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 50.00,40.00 L 50.00,24.00&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 57.53,43.41 L 75.23,27.93&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 57.53,56.59 L 75.23,72.07&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge amber&quot; d=&quot;M 42.47,56.59 L 24.77,72.07&quot; marker-start=&quot;url(#fg-arr-amber-bi)&quot; marker-end=&quot;url(#fg-arr-amber-bi)&quot;/>
+    <path class=&quot;fg-edge green&quot; d=&quot;M 40.00,50.00 L 21.00,50.00&quot; marker-start=&quot;url(#fg-arr-green-bi)&quot; marker-end=&quot;url(#fg-arr-green-bi)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 42.47,43.41 L 24.77,27.93&quot; marker-start=&quot;url(#fg-arr-cyan-bi)&quot;/>
+  </svg>
+
+  <!-- ── HUB ────────────────────────────────────── -->
+  <div class=&quot;fgraph-node hub amber hexagon&quot; style=&quot;--x:50; --y:50;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>/htn extension</div>
+    <div class=&quot;fgraph-sub&quot;>src/index.ts</div>
+  </div>
+
+  <!-- ── SPOKES ─────────────────────────────────── -->
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:50; --y:15;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Authoring</div>
+    <div class=&quot;fgraph-sub&quot;>trace → big model → gate</div>
+  </div>
+  <div class=&quot;fgraph-node cyan&quot; style=&quot;--x:82; --y:22;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Compile + Plan</div>
+    <div class=&quot;fgraph-sub&quot;>YAML → GamePlanHTN</div>
+  </div>
+  <div class=&quot;fgraph-node green&quot; style=&quot;--x:82; --y:78;&quot;>
+    <div class=&quot;fgraph-title green&quot;>Execution Runtime</div>
+    <div class=&quot;fgraph-sub&quot;>async replay loop</div>
+  </div>
+  <div class=&quot;fgraph-node red&quot; style=&quot;--x:18; --y:78;&quot;>
+    <div class=&quot;fgraph-title red&quot;>PR Watcher</div>
+    <div class=&quot;fgraph-sub&quot;>heal CI to merge</div>
+  </div>
+  <div class=&quot;fgraph-node cyan&quot; style=&quot;--x:12; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Domain Store</div>
+    <div class=&quot;fgraph-sub&quot;>~/.pi-htn/domains</div>
+  </div>
+  <div class=&quot;fgraph-node amber&quot; style=&quot;--x:18; --y:22;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>Settings + Config</div>
+    <div class=&quot;fgraph-sub&quot;>model endpoint</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>Author once (rare, big model) · replay many times (cheap, small model). Domains are data, never code.</div>
+</div>
+</main>
+
+</body>
+</html>" title="overview diagram"></iframe>
+  <p class="cap">Figure 1 — The /htn extension binds five subsystems around a YAML-data plan core. Author once, replay many times.</p>
+
+  <h3>Why this shape</h3>
+  <p>HTN decomposition with symbolic backtracking beats ad-hoc LLM planning on multi-step, branching tasks,
+  and it splits cost cleanly: the <strong>big model authors once</strong> (rare), a <strong>small/local model
+  fills arguments on every replay</strong> (cheap). The design mirrors <em>Tree-Planner</em> (arXiv:2310.08582),
+  which cut tokens ~92% and error-corrections ~40% by separating one plan-sampling call from many grounded
+  execution calls.</p>
+
+  <h3>Subsystem index</h3>
+  <div class="grid">
+    <div class="card"><div class="k">Layer 1</div><h4><a href="#" data-go="components" data-anchor="s-commands">Command Surface</a></h4>
+      <span class="filepath">src/index.ts · commands/</span><p>The <code>/htn</code> dispatcher: author · run · watch · settings · list, plus Tab completion.</p></div>
+    <div class="card"><div class="k">Layer 2</div><h4><a href="#" data-go="components" data-anchor="s-author">Authoring Pipeline</a></h4>
+      <span class="filepath">recorder · author · validator · store</span><p>Trace → big-model best-of-N → offline gate → saved domain.</p></div>
+    <div class="card"><div class="k">Layer 3</div><h4><a href="#" data-go="components" data-anchor="s-compile">Compile + Plan Engine</a></h4>
+      <span class="filepath">compiler · predicates · htn · vendor/gameplanhtn</span><p>YAML → GamePlanHTN Domain → findPlan with symbolic backtracking.</p></div>
+    <div class="card"><div class="k">Layer 4</div><h4><a href="#" data-go="components" data-anchor="s-exec">Execution Runtime</a></h4>
+      <span class="filepath">executor · smallModel · toolRegistry · exec · checkpoints</span><p>Async loop: fill args, invoke tool, apply effects, replan on failure.</p></div>
+    <div class="card"><div class="k">Layer 5</div><h4><a href="#" data-go="components" data-anchor="s-watch">PR Watcher + Self-Learning</a></h4>
+      <span class="filepath">watcher/ · learn/playbook</span><p>Poll CI, classify, heal a round, re-check; playbook remembers what worked.</p></div>
+    <div class="card accent"><div class="k">Data assets</div><h4><a href="#" data-go="domains">Three configured domains</a></h4>
+      <span class="filepath">demo/ · src/domains/pr-ci.yaml</span><p>pr-doctor · fix-red-test · k8s-medic — repair ladders expressed purely as data.</p></div>
+  </div>
+
+  <h3>Key external dependencies</h3>
+  <table>
+    <tr><th>Dependency</th><th>Role</th></tr>
+    <tr><td><code>vendor/gameplanhtn</code> (vendored)</td><td>The planner / backtracker only. Its operators are synchronous; pi-htn wraps it with its own async execution loop.</td></tr>
+    <tr><td><code>@earendil-works/pi-coding-agent</code> (peer)</td><td>Host extension API — registers the <code>/htn</code> command, provides <code>pi.exec()</code> and the session tree.</td></tr>
+    <tr><td>OpenAI-compatible model endpoint</td><td>llama.cpp / vLLM server. Defaults to the shared Zosma devserver so inference stays off the laptop.</td></tr>
+    <tr><td><code>yaml</code>, <code>loglevel</code></td><td>Domain parsing and structured run logs under <code>~/.pi-htn/logs/</code>.</td></tr>
+    <tr><td><code>gh</code> CLI (runtime)</td><td>The PR watcher's eyes and hands: <code>gh pr checks</code> as the verifier, <code>gh</code> for comments / reruns.</td></tr>
+  </table>
+</section>
+
+<!-- ===================== COMPONENTS ===================== -->
+<section class="tab" id="components">
+
+  <h2 id="s-commands"><span class="tag t-amber">Layer 1</span>Command Surface (Extension Layer)</h2>
+  <p>The extension entry point <span class="filepath">src/index.ts</span> registers a single <code>/htn</code>
+  command and dispatches to subcommands. It is intentionally thin: it parses input (e.g. <code>intent=bug body=…</code>
+  into a world-state object), wires the correct engine path, and reports a one-line run notice. Tab completion is
+  data-driven from <span class="filepath">src/commands/complete.ts</span> — it autocompletes subcommands, setting
+  keys, and stored domain names.</p>
+  <ul>
+    <li><code>/htn author &lt;name&gt;</code> — read the session trace, ask the big model for N candidate domains, gate each, save the best passing one.</li>
+    <li><code>/htn run &lt;name&gt; [input]</code> — compile a stored domain and execute it; reports mode (<code>live</code> / <code>dry-run</code> / <code>live: &lt;tools&gt;</code>).</li>
+    <li><code>/htn watch &lt;pr&gt; [domain]</code> — heal a PR's CI until merge-ready.</li>
+    <li><code>/htn settings</code> — panel persisting model endpoint, default domain, heal rounds, poll interval to <code>~/.pi-htn/config.json</code>.</li>
+    <li><code>/htn list</code> — list stored domains.</li>
+  </ul>
+  <iframe class="diagram" loading="lazy" height="460" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>Command Surface (Extension Layer)</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 700px;
+    aspect-ratio: 1 / 1;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 18%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 8px 10px 9px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.hub  { --w: 22%; }
+  .fgraph-node.pill { border-radius: 999px; padding: 10px 14px; }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  /* shape variants reused from linear-flow CSS */
+  .fgraph-node.cylinder {
+    border: none;
+    border-left: 1.5px solid var(--border-bright);
+    border-right: 1.5px solid var(--border-bright);
+    border-radius: 0;
+    background: var(--bg-card);
+    padding: 14px 10px;
+  }
+  .fgraph-node.cylinder.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cylinder.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.cylinder.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.cylinder.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.hexagon {
+    clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+    padding: 10px 16px;
+  }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Hub &amp;amp; spokes</div>
+  <h1>Command Surface (Extension Layer)</h1>
+  <p class=&quot;header-subtitle&quot;>/htn dispatches to subcommands; Tab completion is data-driven</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Radial hub: Command Surface (Extension Layer). Hub /htn dispatcher connected to spokes: author &amp;lt;name&amp;gt;, run &amp;lt;name&amp;gt; [input], watch &amp;lt;pr&amp;gt; [domain], settings, list, Tab complete.&quot;>
+
+  <!-- ── EDGES (hub ↔ spokes) ──────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 50.00,40.00 L 50.00,24.00&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 57.53,43.41 L 75.23,27.93&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 60.00,50.00 L 79.00,50.00&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 57.53,56.59 L 75.23,72.07&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 42.47,56.59 L 24.77,72.07&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 40.00,50.00 L 21.00,50.00&quot; marker-start=&quot;url(#fg-arr-purple-bi)&quot;/>
+  </svg>
+
+  <!-- ── HUB ────────────────────────────────────── -->
+  <div class=&quot;fgraph-node hub amber hexagon&quot; style=&quot;--x:50; --y:50;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>/htn dispatcher</div>
+    <div class=&quot;fgraph-sub&quot;>src/index.ts</div>
+  </div>
+
+  <!-- ── SPOKES ─────────────────────────────────── -->
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:50; --y:15;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>author &amp;lt;name&amp;gt;</div>
+    <div class=&quot;fgraph-sub&quot;>best-of-N + gate</div>
+  </div>
+  <div class=&quot;fgraph-node green&quot; style=&quot;--x:82; --y:22;&quot;>
+    <div class=&quot;fgraph-title green&quot;>run &amp;lt;name&amp;gt; [input]</div>
+    <div class=&quot;fgraph-sub&quot;>compile + execute</div>
+  </div>
+  <div class=&quot;fgraph-node red&quot; style=&quot;--x:88; --y:50;&quot;>
+    <div class=&quot;fgraph-title red&quot;>watch &amp;lt;pr&amp;gt; [domain]</div>
+    <div class=&quot;fgraph-sub&quot;>heal CI loop</div>
+  </div>
+  <div class=&quot;fgraph-node amber&quot; style=&quot;--x:82; --y:78;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>settings</div>
+    <div class=&quot;fgraph-sub&quot;>config.json panel</div>
+  </div>
+  <div class=&quot;fgraph-node cyan&quot; style=&quot;--x:18; --y:78;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>list</div>
+    <div class=&quot;fgraph-sub&quot;>stored domains</div>
+  </div>
+  <div class=&quot;fgraph-node cyan&quot; style=&quot;--x:12; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Tab complete</div>
+    <div class=&quot;fgraph-sub&quot;>commands/complete.ts</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>Each subcommand wires its own engine path; the dispatcher only routes + parses input.</div>
+</div>
+</main>
+
+</body>
+</html>" title="commands diagram"></iframe>
+  <p class="cap">Figure 2 — The dispatcher routes; each subcommand owns its own engine wiring.</p>
+
+  <h2 id="s-author"><span class="tag t-purple">Layer 2</span>Authoring Pipeline</h2>
+  <p>Authoring is rare and runs on the <strong>big model</strong>. The <span class="filepath">Recorder</span>
+  parses the active session JSONL (an id/parentId tree) and extracts the ordered tool calls. The
+  <span class="filepath">Author</span> turns that trace into a prompt that asks the model to extract <em>reusable
+  structure</em> — which steps are conditional, the branch predicates, observed failures — not just replay the
+  literal trace. It requests <strong>N=3 candidate</strong> YAML domains.</p>
+  <p>Every candidate passes through the <span class="filepath">Validator</span>, the reliability gate:
+  for each synthetic world state it runs <code>findPlan</code> (decomposition only, no operators fire) and requires a
+  non-empty plan. Best-of-N keeps the best <em>passing</em> candidate; the symbolic validator is the hard gate, and
+  scoring only ranks among passers. The winner is written by the <span class="filepath">DomainStore</span> to
+  <code>~/.pi-htn/domains/&lt;name&gt;.yaml</code>.</p>
+  <iframe class="diagram" loading="lazy" height="360" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>Authoring Pipeline</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 880px;
+    aspect-ratio: 16 / 10;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 14%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 10px 8px 11px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  /* shape variants */
+  .fgraph-node.pill { border-radius: 999px; padding: 12px 14px; }
+  .fgraph-node.cylinder {
+    border: none;
+    border-left: 1.5px solid var(--border-bright);
+    border-right: 1.5px solid var(--border-bright);
+    border-radius: 0;
+    background: var(--bg-card);
+    padding: 14px 8px 11px;
+  }
+  .fgraph-node.cylinder.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cylinder.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.cylinder.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.cylinder.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.hexagon {
+    clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+    padding: 12px 14px;
+  }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Linear flow</div>
+  <h1>Authoring Pipeline</h1>
+  <p class=&quot;header-subtitle&quot;>A successful session trace becomes a reusable, validated YAML domain</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Linear flow: Authoring Pipeline. Session trace → Author prompt → Big model → Validator gate → Domain Store.&quot;>
+
+  <!-- ── EDGES ───────────────────────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 15.0,50 L 25.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 35.0,50 L 45.0,50&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 55.0,50 L 65.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge green&quot; d=&quot;M 75.0,50 L 85.0,50&quot; marker-end=&quot;url(#fg-arr-green)&quot;/>
+  </svg>
+
+  <!-- ── EDGE LABELS ───────────────────────────── -->
+  <div class=&quot;fgraph-lbl purple&quot; style=&quot;--x:60.0; --y:42;&quot;>best-of-N</div>
+  <div class=&quot;fgraph-lbl green&quot; style=&quot;--x:80.0; --y:42;&quot;>non-empty plan ∀ state</div>
+
+  <!-- ── STAGES ─────────────────────────────────── -->
+  <div class=&quot;fgraph-node cyan folded&quot; style=&quot;--x:10.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Session trace</div>
+    <div class=&quot;fgraph-sub&quot;>recorder.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>tool-call JSONL</div>
+  </div>
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:30.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Author prompt</div>
+    <div class=&quot;fgraph-sub&quot;>author.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>generalize structure</div>
+  </div>
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:50.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Big model</div>
+    <div class=&quot;fgraph-sub&quot;>N=3 candidates</div>
+    <div class=&quot;fgraph-sub muted&quot;>qwopus-coder-9b</div>
+  </div>
+  <div class=&quot;fgraph-node amber diamond&quot; style=&quot;--x:70.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>Validator gate</div>
+    <div class=&quot;fgraph-sub&quot;>validator.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>offline decomposition</div>
+  </div>
+  <div class=&quot;fgraph-node green cylinder&quot; style=&quot;--x:90.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title green&quot;>Domain Store</div>
+    <div class=&quot;fgraph-sub&quot;>store.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>best passing wins</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>The symbolic validator is the HARD gate: a candidate is saved only if every synthetic state yields a non-empty plan.</div>
+</div>
+</main>
+
+</body>
+</html>" title="author diagram"></iframe>
+  <p class="cap">Figure 3 — A successful trace becomes a reusable, validated YAML domain. The gate is symbolic, not statistical.</p>
+
+  <h2 id="s-compile"><span class="tag t-cyan">Layer 3</span>Compile + Plan Engine</h2>
+  <p>The <span class="filepath">Compiler</span> walks the YAML task tree and builds the plain-object structure
+  GamePlanHTN's <code>Domain</code> constructor understands. Conditions compile through the
+  <span class="filepath">Predicate DSL</span> (<code>{eq:[k,v]}</code>, <code>{has:k}</code>, <code>{not:…}</code>);
+  effects compile to <code>PlanAndExecute</code> state writes. Crucially, the compiled planning operator is a
+  <strong>no-op that reports success</strong> so decomposition completes — real side-effects run later, in the
+  Executor (this is "execution mode B"). Because GamePlanHTN's <code>PrimitiveTask</code> drops unknown fields, the
+  Executor recovers the tool binding by task name.</p>
+  <p>The engine seeds <em>every</em> referenced world-state key before <code>init()</code> so planning-mode state
+  lookups resolve, then <code>Domain.findPlan</code> produces a plan with symbolic backtracking. GamePlanHTN is
+  vendored under <span class="filepath">vendor/gameplanhtn/</span> and used purely as the planner/backtracker.</p>
+  <iframe class="diagram" loading="lazy" height="440" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>Compile + Plan Engine</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 760px;
+    aspect-ratio: 4 / 5;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .layer-frame {
+    position: absolute;
+    left: 6%;
+    width: 88%;
+    border: 1px dashed var(--border-bright);
+    border-radius: 10px;
+    pointer-events: none;
+    opacity: 0.55;
+    z-index: 0;
+  }
+  .layer-lbl {
+    position: absolute;
+    left: 8%;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--bg-panel);
+    padding: 0 6px;
+    z-index: 1;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 22%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 8px 10px 9px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.wide   { --w: 40%; }
+  .fgraph-node.narrow { --w: 18%; }
+  .fgraph-node.pill   { border-radius: 999px; padding: 10px 14px; }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12.5px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 4px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    line-height: 1.35;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Layered architecture</div>
+  <h1>Compile + Plan Engine</h1>
+  <p class=&quot;header-subtitle&quot;>YAML data is compiled to a GamePlanHTN domain and decomposed with backtracking</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Layered diagram: Compile + Plan Engine. 4 tiers — Source (data), Translation, Planner (vendored), Output.&quot;>
+
+  <!-- ── LAYER FRAMES + LABELS ──────────────────── -->
+  <div class=&quot;layer-frame&quot; style=&quot;top: 5.8%; height: 18.3%;&quot;></div>
+  <div class=&quot;layer-lbl&quot;   style=&quot;top: 3.8%;&quot;>Source (data)</div>
+  <div class=&quot;layer-frame&quot; style=&quot;top: 28.2%; height: 18.3%;&quot;></div>
+  <div class=&quot;layer-lbl&quot;   style=&quot;top: 26.2%;&quot;>Translation</div>
+  <div class=&quot;layer-frame&quot; style=&quot;top: 50.5%; height: 18.3%;&quot;></div>
+  <div class=&quot;layer-lbl&quot;   style=&quot;top: 48.5%;&quot;>Planner (vendored)</div>
+  <div class=&quot;layer-frame&quot; style=&quot;top: 72.8%; height: 18.3%;&quot;></div>
+  <div class=&quot;layer-lbl&quot;   style=&quot;top: 70.8%;&quot;>Output</div>
+
+  <!-- ── EDGES ───────────────────────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 50,22.0 L 50,30.3&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 50,44.3 L 50,52.7&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 50,66.7 L 50,75.0&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+  </svg>
+
+  <!-- ── EDGE LABELS ───────────────────────────── -->
+  <div class=&quot;fgraph-lbl purple&quot; style=&quot;--x:60; --y:26.2;&quot;>load</div>
+  <div class=&quot;fgraph-lbl purple&quot; style=&quot;--x:60; --y:48.5;&quot;>compile</div>
+  <div class=&quot;fgraph-lbl cyan&quot; style=&quot;--x:60; --y:70.8;&quot;>decompose</div>
+
+  <!-- ── NODES ──────────────────────────────────── -->
+  <div class=&quot;fgraph-node cyan wide folded&quot; style=&quot;--x:50; --y:15;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>YAML domain</div>
+    <div class=&quot;fgraph-sub&quot;>yaml.ts / types.ts</div>
+  </div>
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:28; --y:37.33333333333333;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Compiler</div>
+    <div class=&quot;fgraph-sub&quot;>buildTask tree</div>
+  </div>
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:72; --y:37.33333333333333;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Predicate DSL</div>
+    <div class=&quot;fgraph-sub&quot;>eq / has / not</div>
+  </div>
+  <div class=&quot;fgraph-node amber&quot; style=&quot;--x:28; --y:59.666666666666664;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>GamePlanHTN Domain</div>
+    <div class=&quot;fgraph-sub&quot;>htn.ts wrapper</div>
+  </div>
+  <div class=&quot;fgraph-node amber cylinder&quot; style=&quot;--x:72; --y:59.666666666666664;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>Context / WorldState</div>
+    <div class=&quot;fgraph-sub&quot;>seeded keys</div>
+  </div>
+  <div class=&quot;fgraph-node green wide&quot; style=&quot;--x:50; --y:82;&quot;>
+    <div class=&quot;fgraph-title green&quot;>findPlan</div>
+    <div class=&quot;fgraph-sub&quot;>plan + symbolic backtrack</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>Compiled operators are planning no-ops (return success); real side-effects run later in the Executor (execution mode B).</div>
+</div>
+</main>
+
+</body>
+</html>" title="compile diagram"></iframe>
+  <p class="cap">Figure 4 — YAML data is compiled to a vendored GamePlanHTN domain and decomposed. Operators plan as no-ops.</p>
+
+  <h2 id="s-exec"><span class="tag t-green">Layer 4</span>Execution Runtime</h2>
+  <p>The <span class="filepath">Executor</span> is pi-htn's own async loop (GamePlanHTN's operators are synchronous).
+  It calls <code>findPlan</code>, switches the context out of planning mode so <code>setState</code> mutates the real
+  world state, then runs each primitive: if the operator carries a <code>prompt</code>, the
+  <span class="filepath">SmallModel</span> fills arguments (mode B); the <span class="filepath">ToolRegistry</span>
+  invokes the bound tool. <span class="filepath">exec.ts</span> binds <strong>one tool per name</strong> — an
+  <code>exec:</code> block becomes a real shell-backed tool via the injected <code>pi.exec()</code> runner; tools
+  without one fall back to a safe dry-run echo, so mixed live/dry-run domains work.</p>
+  <p>Effects are applied <strong>literal-first, then <code>$result.*</code></strong> overrides with real tool output.
+  A non-zero exit <em>throws</em>: the loop increments a replan counter and re-enters <code>findPlan</code>; after
+  <code>maxReplans</code> (default 5) the <strong>circuit breaker</strong> aborts. Every step is appended to a
+  <span class="filepath">Checkpoint</span> JSONL linked to the session-tree node.</p>
+  <iframe class="diagram" loading="lazy" height="380" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>Execution Runtime</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 880px;
+    aspect-ratio: 16 / 10;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 14%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 10px 8px 11px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  /* shape variants */
+  .fgraph-node.pill { border-radius: 999px; padding: 12px 14px; }
+  .fgraph-node.cylinder {
+    border: none;
+    border-left: 1.5px solid var(--border-bright);
+    border-right: 1.5px solid var(--border-bright);
+    border-radius: 0;
+    background: var(--bg-card);
+    padding: 14px 8px 11px;
+  }
+  .fgraph-node.cylinder.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cylinder.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.cylinder.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.cylinder.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.hexagon {
+    clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+    padding: 12px 14px;
+  }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Linear flow</div>
+  <h1>Execution Runtime</h1>
+  <p class=&quot;header-subtitle&quot;>Async replay loop: small model fills args, bound tool runs, effects mutate world state</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Linear flow: Execution Runtime. findPlan → Small model → Tool invoke → Apply effects → Checkpoint.&quot;>
+
+  <!-- ── EDGES ───────────────────────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 15.0,50 L 25.0,50&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 35.0,50 L 45.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 55.0,50 L 65.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge green&quot; d=&quot;M 75.0,50 L 85.0,50&quot; marker-end=&quot;url(#fg-arr-green)&quot;/>
+    <path class=&quot;fg-edge amber dashed&quot; d=&quot;M 55.0,50 L 5.0,50&quot; marker-end=&quot;url(#fg-arr-amber)&quot;/>
+  </svg>
+
+  <!-- ── EDGE LABELS ───────────────────────────── -->
+  <div class=&quot;fgraph-lbl purple&quot; style=&quot;--x:60.0; --y:42;&quot;>exit 0</div>
+  <div class=&quot;fgraph-lbl amber&quot; style=&quot;--x:30.0; --y:42;&quot;>non-zero exit → replan (circuit breaker @ maxReplans)</div>
+
+  <!-- ── STAGES ─────────────────────────────────── -->
+  <div class=&quot;fgraph-node amber&quot; style=&quot;--x:10.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>findPlan</div>
+    <div class=&quot;fgraph-sub&quot;>next primitives</div>
+  </div>
+  <div class=&quot;fgraph-node purple&quot; style=&quot;--x:30.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Small model</div>
+    <div class=&quot;fgraph-sub&quot;>fill args (mode B)</div>
+    <div class=&quot;fgraph-sub muted&quot;>only if prompt</div>
+  </div>
+  <div class=&quot;fgraph-node green&quot; style=&quot;--x:50.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title green&quot;>Tool invoke</div>
+    <div class=&quot;fgraph-sub&quot;>exec → pi.exec | dry-run</div>
+  </div>
+  <div class=&quot;fgraph-node cyan&quot; style=&quot;--x:70.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Apply effects</div>
+    <div class=&quot;fgraph-sub&quot;>$result.* → WorldState</div>
+  </div>
+  <div class=&quot;fgraph-node cyan cylinder&quot; style=&quot;--x:90.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Checkpoint</div>
+    <div class=&quot;fgraph-sub&quot;>per-step JSONL</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>A throwing tool (non-zero exit) trips a replan; the just-tried rung is excluded by its *_tried guard so the planner climbs the ladder.</div>
+</div>
+</main>
+
+</body>
+</html>" title="execution diagram"></iframe>
+  <p class="cap">Figure 5 — Replay loop. A throwing tool trips a replan; the just-tried rung is excluded by its <code>*_tried</code> guard so the planner climbs the ladder.</p>
+
+  <h2 id="s-watch"><span class="tag t-red">Layer 5</span>PR Watcher + Self-Learning</h2>
+  <p>The watcher (<span class="filepath">src/watcher/</span>, also runnable standalone via
+  <span class="filepath">bin/pi-htn-watch.ts</span>) polls <code>gh pr checks</code> and collapses per-check rows into
+  a single state: any failure → red, else any pending → pending, else green. On red it classifies a
+  <code>failure_class</code> (informed by the playbook prior), runs one heal round through <code>executeDomain</code>
+  with the <code>pr-ci</code> ladder, then <strong>re-checks <code>gh</code> as the verifier</strong>. The set of
+  already-tried strategy ids is carried forward as <code>tried_&lt;id&gt;</code>, so across rounds the HTN excludes
+  spent rungs and climbs the ladder — genuine cross-round backtracking. When every rung is exhausted it escalates.</p>
+  <p>The <span class="filepath">Playbook</span> (<code>~/.pi-htn/playbook.jsonl</code>) is the self-learning memory:
+  it records <code>(repo, pr, failureClass, strategy, ok)</code> per attempt and computes a Laplace-smoothed success
+  rate per strategy, so the watcher can try the historically-most-successful rung first.</p>
+  <iframe class="diagram" loading="lazy" height="380" srcdoc="<!DOCTYPE html>
+<html lang=&quot;en&quot; data-theme=&quot;dark&quot;>
+<head>
+<meta charset=&quot;UTF-8&quot;>
+<meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1.0&quot;>
+<meta name=&quot;generator&quot; content=&quot;lumen / fgraph deterministic renderer&quot;>
+<title>PR Watcher + Self-Learning</title>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+<link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+<link href=&quot;https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=Outfit:wght@300;400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   editorial.css — warm technical document aesthetic (S6)
+   Inspired by nats-arch-roadmap.html. Overrides base tokens.
+
+   Fonts (add to <head>):
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.googleapis.com&quot;>
+     <link rel=&quot;preconnect&quot; href=&quot;https://fonts.gstatic.com&quot; crossorigin>
+     <link href=&quot;https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;family=Inter:wght@300;400;500;600;700&amp;family=Space+Mono:wght@400;700&amp;display=swap&quot; rel=&quot;stylesheet&quot;>
+
+   Identity: rich roadmap / guide / architecture document
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── Baseline Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  color-scheme: light dark;
+  --bg:           #0d1117;
+  --surface:      #13191f;
+  --surface2:     #1a2028;
+  --border:       #21262d;
+  --border-bright: #2d333b;
+  --text:         #fafafa;
+  --text-muted:   #6b7280;
+  --text-dim:     #9ca3af;
+  --accent:       #fbbf24;
+  --accent-dim:   rgba(251,191,36,0.15);
+  --accent-glow:  rgba(251,191,36,0.2);
+}
+
+/* ── Baseline Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --bg:           #f4f6f9;
+  --surface:      #ffffff;
+  --surface2:     #f0f2f5;
+  --border:       #d1d5db;
+  --border-bright: #9ca3af;
+  --text:         #111827;
+  --text-muted:   #6b7280;
+  --text-dim:     #374151;
+  --accent:       #d97706;
+  --accent-dim:   rgba(217,119,6,0.12);
+  --accent-glow:  rgba(217,119,6,0.15);
+}
+
+/* ── Semantic Color Tokens — Editorial Dark ── */
+:root, [data-theme=&quot;dark&quot;] {
+  --success:     #4ade80;
+  --success-dim: rgba(74,222,128,0.10);
+  --warning:     #fbbf24;
+  --warning-dim: rgba(251,191,36,0.10);
+  --error:       #f87171;
+  --error-dim:   rgba(248,113,113,0.12);
+  --info:        #22d3ee;
+  --info-dim:    rgba(34,211,238,0.12);
+
+  /* Extended palette */
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34,211,238,0.12);
+  --green:       #4ade80;
+  --green-dim:   rgba(74,222,128,0.10);
+  --amber:       #fbbf24;
+  --amber-dim:   rgba(251,191,36,0.10);
+  --red:         #f87171;
+  --red-dim:     rgba(248,113,113,0.12);
+  --purple:      #c084fc;
+  --purple-dim:  rgba(192,132,252,0.10);
+}
+
+/* ── Semantic Color Tokens — Editorial Light ── */
+[data-theme=&quot;light&quot;] {
+  --success:     #16a34a;
+  --success-dim: rgba(22,163,74,0.10);
+  --warning:     #d97706;
+  --warning-dim: rgba(217,119,6,0.10);
+  --error:       #dc2626;
+  --error-dim:   rgba(220,38,38,0.10);
+  --info:        #0891b2;
+  --info-dim:    rgba(8,145,178,0.10);
+
+  /* Extended palette */
+  --cyan:        #0891b2;
+  --cyan-dim:    rgba(8,145,178,0.10);
+  --green:       #16a34a;
+  --green-dim:   rgba(22,163,74,0.10);
+  --amber:       #d97706;
+  --amber-dim:   rgba(217,119,6,0.10);
+  --red:         #dc2626;
+  --red-dim:     rgba(220,38,38,0.10);
+  --purple:      #7c3aed;
+  --purple-dim:  rgba(124,58,237,0.10);
+}
+
+/* ── Editorial Light — OS preference (unless manually dark) ── */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme=&quot;dark&quot;]) {
+    --bg:           #f4f6f9;
+    --surface:      #ffffff;
+    --surface2:     #f0f2f5;
+    --border:       #d1d5db;
+    --border-bright: #9ca3af;
+    --text:         #111827;
+    --text-muted:   #6b7280;
+    --text-dim:     #374151;
+    --accent:       #d97706;
+    --accent-dim:   rgba(217,119,6,0.12);
+    --accent-glow:  rgba(217,119,6,0.15);
+
+    --success:     #16a34a;
+    --success-dim: rgba(22,163,74,0.10);
+    --warning:     #d97706;
+    --warning-dim: rgba(217,119,6,0.10);
+    --error:       #dc2626;
+    --error-dim:   rgba(220,38,38,0.10);
+    --info:        #0891b2;
+    --info-dim:    rgba(8,145,178,0.10);
+
+    --cyan:        #0891b2;
+    --cyan-dim:    rgba(8,145,178,0.10);
+    --green:       #16a34a;
+    --green-dim:   rgba(22,163,74,0.10);
+    --amber:       #d97706;
+    --amber-dim:   rgba(217,119,6,0.10);
+    --red:         #dc2626;
+    --red-dim:     rgba(220,38,38,0.10);
+    --purple:      #7c3aed;
+    --purple-dim:  rgba(124,58,237,0.10);
+  }
+}
+
+/* ── Typography Overrides ── */
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Outfit', sans-serif;
+}
+
+code, pre, .mono {
+  font-family: 'Space Mono', monospace;
+}
+
+/* ── Header Pattern ── */
+.header-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--amber);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+header h1, .guide-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.3rem, 4vw, 1.9rem);
+  color: var(--text);
+  line-height: 1.15;
+}
+
+header h1 .accent { color: var(--amber); }
+
+.header-subtitle {
+  font-family: 'Space Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* ── Section Divider ── */
+.section-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--border-bright), transparent);
+}
+
+/* ── Card Color Borders ── */
+.card.high   { border-left: 3px solid var(--red);    }
+.card.medium { border-left: 3px solid var(--amber);  }
+.card.low    { border-left: 3px solid var(--green);  }
+.card.info   { border-left: 3px solid var(--cyan);   }
+.card.tech   { border-left: 3px solid var(--purple); }
+
+/* ── Badge / Pill Colors ── */
+.badge.green,  .pill.green  { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(74,222,128,0.35);  }
+.badge.amber,  .pill.amber  { background: var(--amber-dim);  color: var(--amber);  border: 1px solid rgba(251,191,36,0.35);  }
+.badge.cyan,   .pill.cyan   { background: var(--cyan-dim);   color: var(--cyan);   border: 1px solid rgba(34,211,238,0.35);   }
+.badge.red,    .pill.red    { background: var(--red-dim);    color: var(--red);    border: 1px solid rgba(248,113,113,0.35);    }
+.badge.purple, .pill.purple { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(192,132,252,0.35); }
+
+/* ── ASCII Diagram Colors ── */
+pre .c-green  { color: var(--green);  }
+pre .c-amber  { color: var(--amber);  }
+pre .c-cyan   { color: var(--cyan);   }
+pre .c-purple { color: var(--purple); }
+pre .c-red    { color: var(--red);    }
+pre .c-dim    { color: var(--text-muted); }
+pre .c-bright { color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════════════
+   Slide mode — editorial aesthetic (used by forge-slides)
+   Activated by .deck wrapping any .slide.slide--{type}.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm-editorial title slide: centered gold display, soft gold halo */
+.deck .slide--title {
+  background-image:
+    radial-gradient(ellipse at 50% 30%, var(--accent-glow) 0%, transparent 55%),
+    linear-gradient(to bottom, var(--bg), var(--surface));
+}
+.deck .slide--title .slide__display {
+  font-weight: 700;
+  letter-spacing: -3px;
+  background: linear-gradient(180deg, var(--accent), var(--text));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.deck .slide--title .slide__subtitle {
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-bright);
+  padding-top: 1rem;
+}
+
+/* Content slide: left-aligned heading, semi-serif feel via letter-spacing */
+.deck .slide--content .slide__heading {
+  color: var(--text);
+  letter-spacing: -1px;
+}
+.deck .slide--content .slide__label {
+  color: var(--accent);
+}
+
+/* Closing slide: warm gold wash with bordered CTA */
+.deck .slide--closing {
+  background-image:
+    radial-gradient(ellipse at 50% 70%, var(--accent-dim) 0%, transparent 60%),
+    linear-gradient(to top, var(--bg), var(--surface));
+}
+.deck .slide--closing .slide__heading {
+  color: var(--accent);
+  font-weight: 600;
+}
+.deck .slide--closing .cta {
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+.deck .slide--section .slide__number {
+  color: var(--accent);
+  opacity: 0.06;
+}
+
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    padding: 32px 24px 40px;
+    max-width: 960px;
+    margin: 0 auto;
+  }
+  header { margin-bottom: 20px; }
+  .header-eyebrow {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  h1 { font-size: 28px; font-weight: 700; margin: 6px 0 4px; font-family: 'Outfit', sans-serif; }
+  h1 .accent { color: var(--cyan); }
+  .header-subtitle { color: var(--text-dim); font-size: 13px; margin: 0; max-width: 740px; }
+
+  .fgraph-edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; z-index: 1; }
+  .fgraph-edges .fg-edge { fill: none; stroke-width: 1.6; opacity: 0.95; vector-effect: non-scaling-stroke; }
+  .fgraph-edges .fg-edge.amber  { stroke: var(--amber); }
+  .fgraph-edges .fg-edge.cyan   { stroke: var(--cyan); }
+  .fgraph-edges .fg-edge.purple { stroke: var(--purple); }
+  .fgraph-edges .fg-edge.green  { stroke: var(--green); }
+  .fgraph-edges .fg-edge.red    { stroke: var(--red); }
+  .fgraph-edges .fg-edge.dashed { stroke-dasharray: 4 3; }
+  .fgraph-edges .fg-edge.thick  { stroke-width: 2.6; }
+  .fgraph-edges .mk-amber  { fill: var(--amber); }
+  .fgraph-edges .mk-cyan   { fill: var(--cyan); }
+  .fgraph-edges .mk-purple { fill: var(--purple); }
+  .fgraph-edges .mk-green  { fill: var(--green); }
+  .fgraph-edges .mk-red    { fill: var(--red); }
+
+  .fgraph-lbl {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    transform: translate(-50%, -50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    font-weight: 700;
+    padding: 2px 6px;
+    background: var(--bg-panel);
+    border-radius: 3px;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .fgraph-lbl.amber  { color: var(--amber); }
+  .fgraph-lbl.cyan   { color: var(--cyan); }
+  .fgraph-lbl.purple { color: var(--purple); }
+  .fgraph-lbl.green  { color: var(--green); }
+  .fgraph-lbl.red    { color: var(--red); }
+  .fgraph-lbl .dim   { color: var(--text-muted); font-weight: 400; }
+
+  .fgraph-legend {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 9.5px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  .fgraph-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 880px;
+    aspect-ratio: 16 / 10;
+    margin: 24px auto 16px;
+    background: var(--bg-panel);
+    border: 1px solid rgba(34,211,238,0.35);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .fgraph-node {
+    position: absolute;
+    left: calc(var(--x, 50) * 1%);
+    top:  calc(var(--y, 50) * 1%);
+    width: var(--w, 14%);
+    transform: translate(-50%, -50%);
+    background: var(--bg-card);
+    border: 1.5px solid var(--border-bright);
+    border-radius: 12px;
+    padding: 10px 8px 11px;
+    text-align: center;
+    z-index: 2;
+  }
+  .fgraph-node.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.red    { border-color: var(--red);    background: rgba(251,113,133,0.10); }
+
+  /* shape variants */
+  .fgraph-node.pill { border-radius: 999px; padding: 12px 14px; }
+  .fgraph-node.cylinder {
+    border: none;
+    border-left: 1.5px solid var(--border-bright);
+    border-right: 1.5px solid var(--border-bright);
+    border-radius: 0;
+    background: var(--bg-card);
+    padding: 14px 8px 11px;
+  }
+  .fgraph-node.cylinder.amber  { border-color: var(--amber);  background: rgba(251,191,36,0.10); }
+  .fgraph-node.cylinder.cyan   { border-color: var(--cyan);   background: rgba(34,211,238,0.10); }
+  .fgraph-node.cylinder.purple { border-color: var(--purple); background: rgba(167,139,250,0.10); }
+  .fgraph-node.cylinder.green  { border-color: var(--green);  background: rgba(52,211,153,0.10); }
+  .fgraph-node.hexagon {
+    clip-path: polygon(15% 0%, 85% 0%, 100% 50%, 85% 100%, 15% 100%, 0% 50%);
+    padding: 12px 14px;
+  }
+
+  .fgraph-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .fgraph-title.amber  { color: var(--amber); }
+  .fgraph-title.cyan   { color: var(--cyan); }
+  .fgraph-title.purple { color: var(--purple); }
+  .fgraph-title.green  { color: var(--green); }
+  .fgraph-title.red    { color: var(--red); }
+
+  .fgraph-sub {
+    margin-top: 3px;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    line-height: 1.3;
+    color: var(--text-dim);
+  }
+  .fgraph-sub.muted { color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class=&quot;header-eyebrow&quot;>Lumen · Linear flow</div>
+  <h1>PR Watcher + Self-Learning</h1>
+  <p class=&quot;header-subtitle&quot;>Poll CI, classify failure, heal a round, re-check — playbook remembers what worked</p>
+</header>
+
+<main>
+<div class=&quot;fgraph-wrap&quot; role=&quot;img&quot; aria-label=&quot;Linear flow: PR Watcher + Self-Learning. gh pr checks → Classify → Heal round → Re-check gh → Playbook.&quot;>
+
+  <!-- ── EDGES ───────────────────────────────────── -->
+  <svg class=&quot;fgraph-edges&quot; viewBox=&quot;0 0 100 100&quot; preserveAspectRatio=&quot;none&quot; xmlns=&quot;http://www.w3.org/2000/svg&quot;>
+
+    <defs>
+      <marker id=&quot;fg-arr-amber&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+      <marker id=&quot;fg-arr-amber-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-amber&quot;/></marker>
+      <marker id=&quot;fg-arr-cyan-bi&quot;   viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-cyan&quot;/></marker>
+      <marker id=&quot;fg-arr-purple-bi&quot; viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-purple&quot;/></marker>
+      <marker id=&quot;fg-arr-green-bi&quot;  viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-green&quot;/></marker>
+      <marker id=&quot;fg-arr-red-bi&quot;    viewBox=&quot;0 0 10 10&quot; refX=&quot;9&quot; refY=&quot;5&quot; markerWidth=&quot;6&quot; markerHeight=&quot;6&quot; orient=&quot;auto-start-reverse&quot;><path d=&quot;M0,0 L10,5 L0,10 z&quot; class=&quot;mk-red&quot;/></marker>
+    </defs>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 15.0,50 L 25.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge cyan&quot; d=&quot;M 35.0,50 L 45.0,50&quot; marker-end=&quot;url(#fg-arr-cyan)&quot;/>
+    <path class=&quot;fg-edge purple&quot; d=&quot;M 55.0,50 L 65.0,50&quot; marker-end=&quot;url(#fg-arr-purple)&quot;/>
+    <path class=&quot;fg-edge amber dashed&quot; d=&quot;M 75.0,50 L 5.0,50&quot; marker-end=&quot;url(#fg-arr-amber)&quot;/>
+    <path class=&quot;fg-edge green&quot; d=&quot;M 75.0,50 L 85.0,50&quot; marker-end=&quot;url(#fg-arr-green)&quot;/>
+  </svg>
+
+  <!-- ── EDGE LABELS ───────────────────────────── -->
+  <div class=&quot;fgraph-lbl purple&quot; style=&quot;--x:20.0; --y:42;&quot;>red</div>
+  <div class=&quot;fgraph-lbl amber&quot; style=&quot;--x:40.0; --y:42;&quot;>still red → next round (tried[] forward)</div>
+  <div class=&quot;fgraph-lbl green&quot; style=&quot;--x:80.0; --y:42;&quot;>record outcome</div>
+
+  <!-- ── STAGES ─────────────────────────────────── -->
+  <div class=&quot;fgraph-node cyan folded&quot; style=&quot;--x:10.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>gh pr checks</div>
+    <div class=&quot;fgraph-sub&quot;>watcher/gh.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>parse → red/green/pending</div>
+  </div>
+  <div class=&quot;fgraph-node purple diamond&quot; style=&quot;--x:30.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title purple&quot;>Classify</div>
+    <div class=&quot;fgraph-sub&quot;>failure_class</div>
+    <div class=&quot;fgraph-sub muted&quot;>playbook prior</div>
+  </div>
+  <div class=&quot;fgraph-node green&quot; style=&quot;--x:50.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title green&quot;>Heal round</div>
+    <div class=&quot;fgraph-sub&quot;>executeDomain</div>
+    <div class=&quot;fgraph-sub muted&quot;>pr-ci ladder</div>
+  </div>
+  <div class=&quot;fgraph-node amber&quot; style=&quot;--x:70.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title amber&quot;>Re-check gh</div>
+    <div class=&quot;fgraph-sub&quot;>verifier</div>
+  </div>
+  <div class=&quot;fgraph-node cyan cylinder&quot; style=&quot;--x:90.0; --y:50;&quot;>
+    <div class=&quot;fgraph-title cyan&quot;>Playbook</div>
+    <div class=&quot;fgraph-sub&quot;>learn/playbook.ts</div>
+    <div class=&quot;fgraph-sub muted&quot;>strategy success rate</div>
+  </div>
+  <div class=&quot;fgraph-legend&quot;>Cross-round backtracking: each round carries tried strategy ids forward; when the ladder is exhausted the watcher escalates.</div>
+</div>
+</main>
+
+</body>
+</html>" title="watcher diagram"></iframe>
+  <p class="cap">Figure 6 — Poll → classify → heal → re-check, with gh as the verifier and the playbook as durable memory.</p>
+</section>
+
+<!-- ===================== FLOWS ===================== -->
+<section class="tab" id="flows">
+  <h2>Cross-subsystem flows</h2>
+  <p class="lead">Two end-to-end paths tie the subsystems together: the <strong>author→run lifecycle</strong>
+  (how a domain is born and replayed) and the <strong>heal loop</strong> (how structural backtracking converges).</p>
+
+  <div class="sect purple">
+    <h3>Flow A — Author → Run lifecycle</h3>
+    <ol>
+      <li><strong>Record.</strong> <code>/htn author &lt;name&gt;</code> reads the session JSONL via the
+        <a href="#" data-go="components" data-anchor="s-author">Recorder</a> and extracts the ordered tool calls.</li>
+      <li><strong>Generalize.</strong> The Author builds a prompt; the big model returns N=3 candidate YAML domains.</li>
+      <li><strong>Gate.</strong> The <a href="#" data-go="components" data-anchor="s-author">Validator</a> decomposes
+        each candidate against synthetic states; only candidates that always yield a non-empty plan survive.</li>
+      <li><strong>Persist.</strong> The best passer is written to <code>~/.pi-htn/domains/&lt;name&gt;.yaml</code>.</li>
+      <li><strong>Replay.</strong> Later, <code>/htn run</code> resolves the domain (repo → store → builtin),
+        <a href="#" data-go="components" data-anchor="s-compile">compiles</a> it, and the
+        <a href="#" data-go="components" data-anchor="s-exec">Executor</a> runs each primitive — small model fills
+        args, bound tool runs deterministically, effects mutate world state, each step checkpointed.</li>
+    </ol>
+    <p>The split is the whole point: step 2 (expensive) happens once; step 5 (cheap, small model) happens on every replay.</p>
+  </div>
+
+  <div class="sect red">
+    <h3>Flow B — The heal loop &amp; why the backtracking is real</h3>
+    <p>Escalation is HTN-native — driven by <strong>preconditions over world state</strong>, not by re-asking the
+    model. Each repair rung is a <code>sequence</code>: <code>apply-&lt;x&gt;</code> (effect sets
+    <code>&lt;x&gt;_tried: true</code>) → <code>verify</code> (throws if still failing). The repair root is a
+    <code>select</code> whose rungs are guarded by <code>{ not: { eq: [&lt;x&gt;_tried, true] } }</code>.</p>
+    <pre>▸ verify ................ ✗ still red
+↩ backtrack ............. just-tried rung excluded by *_tried guard
+▸ planner ............... decomposes to the NEXT rung      (alternate-branch backtrack)
+▸ verify ................ ✓ GREEN  → report</pre>
+    <p>When <code>verify</code> throws, the Executor replans; the just-tried rung is no longer valid, so the planner
+    decomposes to the next rung — a genuine alternate-branch backtrack, not a retry loop. A <strong>guaranteed-green
+    terminal rung</strong> (revert / restore) makes the ladder always converge; a hopeless case trips the circuit
+    breaker and escalates.</p>
+    <p class="cap">Note — classification + the model's patch are <strong>hoisted to plan input</strong> (e.g.
+    <code>failure_class</code>, <code>approach</code>, <code>line</code>): the Executor plans the whole domain
+    up-front, so a mid-plan <code>$result</code> effect cannot gate a <code>select</code>. The tiny model is called
+    once before planning; the HTN owns structure and backtracking.</p>
+  </div>
+</section>
+
+<!-- ===================== DOMAINS ===================== -->
+<section class="tab" id="domains">
+  <h2>The three configured domains</h2>
+  <p class="lead">pi-htn ships three worked domains in <span class="filepath">demo/</span>, plus a generic
+  built-in ladder at <span class="filepath">src/domains/pr-ci.yaml</span>. Each is <strong>pure YAML data</strong> —
+  the same engine runs all of them. They share one reliability recipe: <em>let the small model try the narrow,
+  creative patch first; let the HTN structurally backtrack to a deterministic, guaranteed-converging safety net.</em></p>
+
+  <table>
+    <tr><th>Domain</th><th>Heals</th><th>Verifier</th><th>Model does</th><th>Terminal safety net</th></tr>
+    <tr><td class="filepath">pr-doctor</td><td>Red CI on a PR</td><td><code>verify-green.sh</code> / gh checks</td><td>Classifies failure (flaky?)</td><td>revert rung</td></tr>
+    <tr><td class="filepath">fix-red-test</td><td>A red regression test</td><td>scoped <code>verify-test.sh</code></td><td>Emits the guard line to insert</td><td>canonical-template revert (guaranteed green)</td></tr>
+    <tr><td class="filepath">k8s-medic</td><td>A wedged k8s deployment</td><td><code>kubectl rollout status</code></td><td>Proposes a pullable image</td><td>restore last-known-good image</td></tr>
+  </table>
+
+  <div class="sect green">
+    <h3>1 · pr-doctor <span class="pill">demo/pr-doctor</span></h3>
+    <p>The original "a 4B model heals a red PR" demo. A tiny model classifies the failure into a
+    <code>failure_class</code> (hoisted to plan input); the HTN then walks a repair ladder, verifying after each rung.</p>
+    <pre>repair (select, until fixed)
+ ├─ m-rerun   if failure_class=flaky → apply-rerun → verify
+ ├─ m-lint    generic lint/format pass → verify
+ └─ m-revert  revert the offending change → verify   (terminal)
+report          one-sentence PR comment</pre>
+    <p>Rung 1 (<code>m-rerun</code>) is guarded by <code>{eq:[failure_class, flaky]}</code> so it only fires for
+    flaky failures; rung 2 (<code>m-lint</code>) is the generic format/lint fallback; rung 3 (<code>m-revert</code>)
+    is the terminal safety net. Each rung sets <code>&lt;x&gt;_tried</code> and a <code>last_strategy</code> label so
+    a failed <code>verify</code> backtracks cleanly to the next rung. The repair scripts are just shell — swapping the
+    local stand-ins for real <code>gh</code> commands (<code>gh run rerun --failed</code>, <code>gh pr comment</code>)
+    leaves the domain unchanged; only tool bindings move.</p>
+  </div>
+
+  <div class="sect cyan">
+    <h3>2 · fix-red-test <span class="pill">demo/fix-red-test</span></h3>
+    <p>Harder than pr-doctor: the model must produce the <em>actual code patch</em>, not just a class label. It reads
+    the failing test plus the buggy function and emits a concrete guard statement; that guess is hoisted to plan
+    input as <code>approach</code> + <code>line</code>.</p>
+    <pre>repair (select, until fixed)
+ ├─ m-guard   apply the 4B model's emitted guard line     → verify
+ ├─ m-dedupe  deterministic strip-then-append (known-good) → verify
+ └─ m-revert  rewrite from canonical template (guaranteed) → verify
+report          one-sentence PR comment via gh</pre>
+    <p>This is where the backtracking is <strong>honestly visible</strong>: live, the model emitted
+    <code>if (systemPrompt.endsWith(WIKI_STATUS_BLOCK)) return systemPrompt;</code> — plausible, but the regression
+    test seeds the footer <em>mid-prompt</em>, so <code>endsWith</code> is false and the duplication persists.
+    <code>m-guard</code> verifies RED, the HTN backtracks, and the deterministic <code>m-dedupe</code> rung lands
+    GREEN. Rungs 2–3 are known-good idempotency fixes that <strong>guarantee convergence</strong>; <code>verify</code>
+    runs only the scoped regression test, so the gate is deterministic and unaffected by unrelated local-env noise.</p>
+  </div>
+
+  <div class="sect amber">
+    <h3>3 · k8s-medic <span class="pill">demo/k8s-medic</span></h3>
+    <p>A different domain entirely — <strong>live infrastructure.</strong> A deployment is wedged (e.g.
+    <code>ImagePullBackOff</code> from a bad image tag). The model reads the diagnosis (pod failure reason + current
+    image) and proposes a corrected, pullable image, hoisted to plan input as <code>action</code> + <code>image</code>.</p>
+    <pre>heal (select, until healthy)
+ ├─ m-apply    apply model's proposed image (tool: kset)      → verify rollout
+ └─ m-restore  restore last-known-good image (tool: krestore) → verify rollout
+report           model writes an incident note; report.sh annotates the deploy</pre>
+    <p><code>verify-rollout.sh</code> runs <code>kubectl rollout status --timeout</code>; a non-Ready rollout exits
+    non-zero → throws → replan. The terminal <code>m-restore</code> rung restores the pinned last-known-good image,
+    so the ladder cannot fail to converge even when the model is wrong.</p>
+    <p class="cap"><strong>Load-bearing gotcha:</strong> <code>buildExecRegistry</code> binds one exec spec per tool
+    name (first wins). Two rungs needing <em>different</em> args (<code>{{image}}</code> vs <code>{{good_image}}</code>)
+    must therefore use <strong>different tool names</strong> (<code>kset</code> vs <code>krestore</code>) — otherwise
+    the second silently reuses the first's command.</p>
+  </div>
+
+  <div class="sect">
+    <h3>Built-in · pr-ci <span class="pill">src/domains/pr-ci.yaml</span></h3>
+    <p>The generic, safe-by-default ladder the <a href="#" data-go="components" data-anchor="s-watch">watcher</a> uses
+    when a repo ships no domain of its own. It only does universally-safe moves (re-run flaky CI, apply standard
+    formatters). Resolution is most-specific-first — a repo's own
+    <code>&lt;repoDir&gt;/.pi-htn/pr-ci.yaml</code> wins over the user's <code>~/.pi-htn/domains/</code> store, which
+    wins over this built-in — so a project's real repair ladder (real test/lint commands, a revert rung) travels with
+    the repo.</p>
+  </div>
+</section>
+
+<!-- ===================== DECISIONS ===================== -->
+<section class="tab" id="decisions">
+  <h2>Architectural decisions</h2>
+
+  <div class="decision">
+    <p class="dq">1 · The LLM authors a plan as YAML data, never code</p>
+    <p>A trusted TypeScript runtime executes the data; the model never emits executable code.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Let the model emit a script / code actions per step.</p></div>
+      <div><span class="lab">Why this</span><p>Data is inspectable, diffable, and gateable offline. It is the foundation of the Reliability-first priority order.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">2 · Symbolic validator as the hard gate, best-of-N only ranks</p>
+    <p>A candidate is saved only if <code>findPlan</code> yields a non-empty plan for every synthetic state; scoring breaks ties among passers.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Trust the model's single best output; score-only selection.</p></div>
+      <div><span class="lab">Why this</span><p>A statistical score can't prove decomposition soundness; a symbolic check can. Capability rides on top of a hard reliability floor.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">3 · Execution mode B — operators plan as no-ops, effects run in the Executor</p>
+    <p>Compiled operators return success during planning; real side-effects fire in pi-htn's own async loop.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Run side-effects inside GamePlanHTN's synchronous operators.</p></div>
+      <div><span class="lab">Why this</span><p>Keeps planning pure and deterministic, and lets execution be async, replannable, and checkpointed without forking the vendored planner.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">4 · Hoist model decisions to plan input</p>
+    <p>Classification / patch guesses (<code>failure_class</code>, <code>approach</code>, <code>line</code>, <code>image</code>) are computed once before planning and seeded into world state.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Gate a <code>select</code> on a mid-plan <code>$result</code> effect.</p></div>
+      <div><span class="lab">Why this</span><p>The Executor plans the whole domain up-front, so a mid-plan result can't gate a branch. Hoisting keeps the HTN in charge of structure and backtracking.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">5 · A guaranteed-green terminal rung in every repair ladder</p>
+    <p>Each healing domain ends with a deterministic, known-good move (revert / restore / lint).</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Stop after the model's attempts; escalate immediately on failure.</p></div>
+      <div><span class="lab">Why this</span><p>Structural convergence: the model gets to try first, but the ladder cannot fail to converge. A hopeless case still trips the circuit breaker.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">6 · Vendor GamePlanHTN; own the async execution loop</p>
+    <p>GamePlanHTN is vendored as the planner/backtracker only; the execution loop is pi-htn's own code.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Fork GamePlanHTN to make its operators async.</p></div>
+      <div><span class="lab">Why this</span><p>Its symbolic backtracking is the valuable part; its synchronous operators are not. A thin wrapper plus an external loop avoids carrying a fork.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">7 · Domain resolution precedence: repo → store → built-in</p>
+    <p>A repo's <code>.pi-htn/&lt;name&gt;.yaml</code> wins over the user's global store, which wins over the shipped built-in.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Single global domain directory.</p></div>
+      <div><span class="lab">Why this</span><p>Reusability: a project's own repair ladder is version-controlled and travels with the repo, while safe defaults still ship in the box.</p></div>
+    </div>
+  </div>
+
+  <div class="decision">
+    <p class="dq">8 · Inference defaults off the laptop</p>
+    <p>Default endpoint is the shared Zosma devserver; precedence is env var &gt; saved settings &gt; built-in default.</p>
+    <div class="row">
+      <div><span class="lab">Alternatives</span><p>Default to a local model process.</p></div>
+      <div><span class="lab">Why this</span><p>Cost/ergonomics: replay never cooks the local machine, while <code>--base</code>/<code>--model</code> or a local llama-swap remain one flag away.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="tab" id="factcheck-sec">
+  <h2>Fact-check verification</h2>
+  <p class="cap">Claims in this document were verified against the pi-htn source tree on 2026-06-19. Summary below.</p>
+  <table>
+    <tr><th>Claim</th><th>Source of truth</th><th>Status</th></tr>
+    <tr><td>Authoring samples N=3 candidates</td><td><code>src/index.ts</code> <code>N_CANDIDATES = 3</code></td><td>✓ verified</td></tr>
+    <tr><td>Circuit breaker at maxReplans default 5</td><td><code>src/executor.ts</code> <code>opts.maxReplans ?? 5</code></td><td>✓ verified</td></tr>
+    <tr><td>Default endpoint devserver:8010, model qwopus-coder-9b</td><td><code>src/config.ts</code> <code>DEFAULT_MODEL_BASE/_ID</code></td><td>✓ verified</td></tr>
+    <tr><td>Domain resolution repo → store → built-in</td><td><code>src/domains.ts</code> <code>resolveDomainYaml</code></td><td>✓ verified</td></tr>
+    <tr><td>One exec spec per tool name (first wins)</td><td><code>src/exec.ts</code> <code>buildExecRegistry</code></td><td>✓ verified</td></tr>
+    <tr><td>Effects applied literal-first, then <code>$result.*</code></td><td><code>src/executor.ts</code> apply order</td><td>✓ verified</td></tr>
+    <tr><td>pr-doctor repair ladder rungs</td><td><code>demo/pr-doctor/pr-doctor.yaml</code></td><td>⚠ corrected — ladder is <strong>m-rerun → m-lint → m-revert</strong> (3 rungs; terminal is revert, not lint)</td></tr>
+    <tr><td>built-in pr-ci does only rerun + lint-fix</td><td><code>src/domains/pr-ci.yaml</code></td><td>✓ verified</td></tr>
+    <tr><td>fix-red-test ladder m-guard → m-dedupe → m-revert</td><td><code>demo/fix-red-test/fix-red-test.yaml</code></td><td>✓ verified</td></tr>
+    <tr><td>k8s-medic: kset / krestore, restore-last-known-good terminal</td><td><code>demo/k8s-medic/k8s-medic.yaml</code></td><td>✓ verified</td></tr>
+  </table>
+  <p class="cap">One claim was corrected in place (pr-doctor's terminal rung). No claims were silently passed.</p>
+</section>
+
+</main>
+
+<div class="footer" id="factcheck">Generated architecture document · pi-htn v0.1 · diagrams rendered via lumen fgraph (editorial) · fact-checked 2026-06-19.</div>
+
+<script>
+  const tabs=document.querySelectorAll('#tabs button');
+  const panes=document.querySelectorAll('.tab');
+  function show(id){
+    tabs.forEach(b=>b.classList.toggle('active',b.dataset.tab===id));
+    panes.forEach(p=>p.classList.toggle('active',p.id===id));
+    window.scrollTo({top:0,behavior:'instant'});
+  }
+  tabs.forEach(b=>b.addEventListener('click',()=>show(b.dataset.tab)));
+  document.querySelectorAll('[data-go]').forEach(a=>a.addEventListener('click',e=>{
+    e.preventDefault();show(a.dataset.go);
+    const anc=a.dataset.anchor;
+    if(anc){const el=document.getElementById(anc);if(el)setTimeout(()=>el.scrollIntoView({behavior:'smooth',block:'start'}),60);}
+  }));
+</script>
+</body>
+</html>

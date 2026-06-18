@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pi-htn · Visual Docs</title>
+<!-- Landing gallery for pi-htn's lumen-generated visual docs. Self-contained, offline-safe. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --font-body:'Space Grotesk',system-ui,-apple-system,sans-serif;
+    --font-mono:'JetBrains Mono','SF Mono',Consolas,monospace;
+    --bg:#0a1f33; --surface:#0f2a44; --surface2:#143553;
+    --border:rgba(130,190,235,.14); --border-bright:rgba(130,190,235,.30);
+    --grid:rgba(120,180,225,.06); --grid-bold:rgba(120,180,225,.10);
+    --text:#e3eef8; --text-dim:#8fa9c2;
+    --accent:#ff7a5c; --accent-dim:rgba(255,122,92,.12);
+    --cyan:#6fc6ff; --cyan-dim:rgba(111,198,255,.12);
+    --green:#5fd6a4;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{
+    font-family:var(--font-body); color:var(--text); background-color:var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px),
+      linear-gradient(var(--grid-bold) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid-bold) 1px,transparent 1px);
+    background-size:28px 28px,28px 28px,140px 140px,140px 140px;
+    min-height:100vh; padding:clamp(36px,7vw,96px) clamp(24px,7vw,120px);
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+  .eyebrow{font-family:var(--font-mono);font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--cyan);margin-bottom:18px;}
+  h1{font-size:clamp(38px,7vw,76px);font-weight:600;letter-spacing:-2px;line-height:1;}
+  h1 em{font-style:normal;color:var(--accent);}
+  .lede{font-size:clamp(16px,2.2vw,21px);color:var(--text-dim);line-height:1.6;max-width:62ch;margin-top:22px;}
+  .lede code{font-family:var(--font-mono);font-size:.86em;background:var(--cyan-dim);color:var(--cyan);padding:1px 6px;border-radius:3px;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px;margin-top:clamp(34px,5vw,56px);}
+  a.card{
+    display:flex;flex-direction:column;text-decoration:none;color:inherit;
+    background:var(--surface);border:1px solid var(--border);border-radius:16px;
+    padding:clamp(22px,3vw,34px);transition:border-color .2s,transform .2s,background .2s;position:relative;overflow:hidden;
+  }
+  a.card:hover{border-color:var(--border-bright);transform:translateY(-3px);background:var(--surface2);}
+  a.card::after{content:'\2197';position:absolute;top:22px;right:24px;font-size:22px;color:var(--text-dim);transition:color .2s,transform .2s;}
+  a.card:hover::after{color:var(--accent);transform:translate(2px,-2px);}
+  .kind{font-family:var(--font-mono);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;padding:4px 10px;border-radius:5px;align-self:flex-start;margin-bottom:18px;}
+  .kind.doc{background:var(--cyan-dim);color:var(--cyan);}
+  .kind.deck{background:var(--accent-dim);color:var(--accent);}
+  .card h2{font-size:clamp(21px,2.6vw,27px);font-weight:600;letter-spacing:-.5px;line-height:1.15;}
+  .card p{color:var(--text-dim);font-size:15px;line-height:1.55;margin-top:12px;}
+  .meta{font-family:var(--font-mono);font-size:11.5px;color:var(--text-dim);margin-top:20px;display:flex;gap:8px;flex-wrap:wrap;}
+  .meta span{border:1px solid var(--border);border-radius:4px;padding:3px 8px;}
+  footer{margin-top:clamp(40px,6vw,72px);font-family:var(--font-mono);font-size:13px;color:var(--text-dim);line-height:1.8;border-top:1px solid var(--border);padding-top:24px;}
+  footer a{color:var(--cyan);text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">pi-htn · visual documentation</p>
+  <h1>How pi-htn <em>thinks</em></h1>
+  <p class="lede">Interactive, offline-playable docs generated with the <code>lumen</code> skill suite. Each file is fully self-contained — open it locally or via the rendered links in the <code>README</code>. No build step, no CDN.</p>
+
+  <div class="grid">
+    <a class="card" href="./architecture.html">
+      <span class="kind doc">Architecture Doc</span>
+      <h2>System Architecture</h2>
+      <p>Six tabs, six embedded subsystem diagrams: command surface, authoring pipeline, compile+plan engine, execution runtime, the PR watcher, plus the three configured domains and a fact-check ledger.</p>
+      <div class="meta"><span>6 tabs</span><span>6 diagrams</span><span>fact-checked</span></div>
+    </a>
+    <a class="card" href="./decomposition-slides.html">
+      <span class="kind deck">Slide Deck</span>
+      <h2>Decomposition &amp; LLM Inference Artifacts</h2>
+      <p>An 18-slide scroll-snap deck on how a task decomposes through <code>select</code>/<code>sequence</code> trees, and the exact three LLM artifacts — author prompt, hoisted decision, in-loop arg-fill — illustrated with all three domains.</p>
+      <div class="meta"><span>18 slides</span><span>verbatim prompts</span><span>↑ ↓ to nav</span></div>
+    </a>
+  </div>
+
+  <footer>
+    Source: <a href="https://github.com/zosmaai/pi-htn">github.com/zosmaai/pi-htn</a><br>
+    Generated with lumen-architecture-doc &amp; lumen-slides · rendered via GitHub Pages.
+  </footer>
+</div>
+</body>
+</html>
