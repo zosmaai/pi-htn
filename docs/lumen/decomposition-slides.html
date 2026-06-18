@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pi-htn — Task Decomposition &amp; LLM Inference Artifacts</title>
+<!--
+  Aesthetic: Engineering Blueprint (typographic riff) — deep blueprint blue,
+  grid-paper background, white/cyan line SVGs, coral-red annotation accents,
+  mono-forward type. Offline file:// safe: NO CDN deps, NO Mermaid; every
+  diagram is hand-authored inline SVG. SlideEngine lifted from lumen-slides
+  templates/slide-deck.html (scroll-snap, keyboard/touch nav, .reveal stagger,
+  prefers-reduced-motion honored).
+  Compositional variety enforced: title / content-left / diagram-bleed /
+  content-right / split / code / table / quote / closing — no 3 consecutive same.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============ THEME: Engineering Blueprint ============ */
+  :root {
+    --font-body: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+    --bg: #0a1f33;
+    --surface: #0f2a44;
+    --surface2: #143553;
+    --surface-elevated: #1a3f60;
+    --border: rgba(130, 190, 235, 0.14);
+    --border-bright: rgba(130, 190, 235, 0.30);
+    --grid: rgba(120, 180, 225, 0.06);
+    --grid-bold: rgba(120, 180, 225, 0.10);
+    --text: #e3eef8;
+    --text-dim: #8fa9c2;
+    --accent: #ff7a5c;          /* annotation coral-red */
+    --accent-dim: rgba(255, 122, 92, 0.12);
+    --cyan: #6fc6ff;            /* structure / control */
+    --cyan-dim: rgba(111, 198, 255, 0.12);
+    --green: #5fd6a4;
+    --green-dim: rgba(95, 214, 164, 0.12);
+    --red: #ff7a5c;
+    --red-dim: rgba(255, 122, 92, 0.12);
+    --code-bg: #07182a;
+    --code-text: #d3e2f0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    color: var(--text);
+    background-color: var(--bg);
+    /* blueprint grid paper */
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px),
+      linear-gradient(var(--grid-bold) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-bold) 1px, transparent 1px);
+    background-size: 28px 28px, 28px 28px, 140px 140px, 140px 140px;
+    overflow: hidden;
+  }
+
+  /* ============ DECK ENGINE ============ */
+  .deck {
+    height: 100dvh;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .slide {
+    height: 100dvh;
+    scroll-snap-align: start;
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(36px, 6vh, 76px) clamp(40px, 8vw, 120px);
+    isolation: isolate;
+    opacity: 0;
+    transform: translateY(36px) scale(0.985);
+    transition:
+      opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .slide.visible { opacity: 1; transform: none; }
+
+  .slide .reveal {
+    opacity: 0; transform: translateY(18px);
+    transition: opacity 0.5s cubic-bezier(0.16,1,0.3,1), transform 0.5s cubic-bezier(0.16,1,0.3,1);
+  }
+  .slide.visible .reveal { opacity: 1; transform: none; }
+  .slide.visible .reveal:nth-child(1){transition-delay:.08s}
+  .slide.visible .reveal:nth-child(2){transition-delay:.16s}
+  .slide.visible .reveal:nth-child(3){transition-delay:.24s}
+  .slide.visible .reveal:nth-child(4){transition-delay:.32s}
+  .slide.visible .reveal:nth-child(5){transition-delay:.40s}
+  .slide.visible .reveal:nth-child(6){transition-delay:.48s}
+  .slide.visible .reveal:nth-child(7){transition-delay:.56s}
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide, .slide .reveal { opacity:1 !important; transform:none !important; transition:none !important; }
+  }
+
+  /* ============ NAV CHROME ============ */
+  .deck-progress { position:fixed; top:0; left:0; height:3px; background:var(--accent); z-index:100; transition:width .3s ease; pointer-events:none; }
+  .deck-dots { position:fixed; right:clamp(12px,2vw,24px); top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:8px; z-index:100; padding:8px; background:color-mix(in srgb, var(--bg) 60%, transparent); border-radius:20px; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+  .deck-dot { width:8px; height:8px; border-radius:50%; background:var(--text-dim); opacity:.3; border:none; padding:0; cursor:pointer; transition:opacity .2s, transform .2s; }
+  .deck-dot:hover { opacity:.6; }
+  .deck-dot.active { opacity:1; transform:scale(1.5); background:var(--accent); }
+  .deck-counter { position:fixed; bottom:clamp(12px,2vh,24px); right:clamp(12px,2vw,24px); font-family:var(--font-mono); font-size:12px; color:var(--text-dim); z-index:100; font-variant-numeric:tabular-nums; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .deck-hints { position:fixed; bottom:clamp(12px,2vh,24px); left:50%; transform:translateX(-50%); font-family:var(--font-mono); font-size:11px; color:var(--text-dim); opacity:.6; z-index:100; transition:opacity .5s; white-space:nowrap; text-shadow:0 1px 3px rgba(0,0,0,.4); }
+  .deck-hints.faded { opacity:0; pointer-events:none; }
+
+  /* ============ SHARED ELEMENTS ============ */
+  .slide__display { font-size:clamp(44px,9vw,108px); font-weight:600; letter-spacing:-2px; line-height:.96; text-wrap:balance; }
+  .slide__heading { font-size:clamp(26px,4.6vw,46px); font-weight:600; letter-spacing:-.5px; line-height:1.12; text-wrap:balance; }
+  .slide__body { font-size:clamp(16px,2.1vw,21px); line-height:1.6; color:var(--text-dim); text-wrap:pretty; }
+  .slide__subtitle { font-family:var(--font-mono); font-size:clamp(12px,1.4vw,17px); color:var(--text-dim); letter-spacing:1px; }
+  .slide__label { font-family:var(--font-mono); font-size:clamp(10px,1.2vw,13px); font-weight:600; text-transform:uppercase; letter-spacing:2px; color:var(--accent); margin-bottom:14px; }
+  .slide__decor { position:absolute; pointer-events:none; z-index:0; }
+  .tag { font-family:var(--font-mono); font-size:11px; padding:3px 9px; border-radius:4px; border:1px solid var(--border-bright); color:var(--text-dim); letter-spacing:.5px; }
+  code.k { font-family:var(--font-mono); font-size:.86em; background:var(--cyan-dim); color:var(--cyan); padding:1px 6px; border-radius:3px; }
+
+  /* ============ TITLE ============ */
+  .slide--title { justify-content:center; align-items:flex-start; text-align:left; }
+  .slide--title .slide__display { color:var(--text); }
+  .slide--title .slide__display em { font-style:normal; color:var(--accent); }
+
+  /* ============ DIVIDER ============ */
+  .slide--divider { justify-content:center; }
+  .slide--divider .slide__number { font-size:clamp(110px,24vw,280px); font-weight:600; line-height:.85; opacity:.07; position:absolute; top:50%; left:clamp(24px,6vw,90px); transform:translateY(-52%); pointer-events:none; font-variant-numeric:tabular-nums; color:var(--cyan); font-family:var(--font-mono); }
+
+  /* ============ CONTENT ============ */
+  .slide--content .slide__inner { display:grid; grid-template-columns:3fr 2fr; gap:clamp(24px,4vw,64px); align-items:center; width:100%; }
+  .slide--content.right .slide__inner { grid-template-columns:2fr 3fr; }
+  .slide__bullets { list-style:none; padding:0; }
+  .slide__bullets li { padding:10px 0 10px 26px; position:relative; font-size:clamp(15px,1.9vw,21px); line-height:1.5; color:var(--text-dim); }
+  .slide__bullets li::before { content:''; position:absolute; left:0; top:19px; width:9px; height:9px; background:var(--accent); transform:rotate(45deg); }
+  .slide__bullets li strong { color:var(--text); font-weight:600; }
+  .slide__aside { display:flex; align-items:center; justify-content:center; min-height:200px; }
+
+  /* ============ SPLIT ============ */
+  .slide--split { padding:0; }
+  .slide--split .slide__panels { display:grid; grid-template-columns:1fr 1fr; height:100%; }
+  .slide--split .slide__panel { padding:clamp(40px,6vh,80px) clamp(32px,4vw,64px); display:flex; flex-direction:column; justify-content:center; }
+  .slide--split .slide__panel--primary { background:var(--surface); border-right:1px solid var(--border-bright); }
+  .slide--split .slide__panel--secondary { background:var(--surface2); }
+
+  /* ============ DIAGRAM (inline SVG) ============ */
+  .slide--diagram { padding:clamp(24px,4vh,48px) clamp(28px,5vw,72px); }
+  .slide--diagram .slide__heading { margin-bottom:clamp(10px,2vh,22px); }
+  .diagram-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:clamp(16px,3vh,32px); flex:1; min-height:0; display:flex; align-items:center; justify-content:center; }
+  .diagram-wrap svg { width:100%; height:100%; max-height:62vh; }
+  .svg-node-fill-c { fill:var(--cyan-dim); stroke:var(--cyan); }
+  .svg-node-fill-a { fill:var(--accent-dim); stroke:var(--accent); }
+  .svg-node-fill-g { fill:var(--green-dim); stroke:var(--green); }
+  text.svg-l { font-family:var(--font-mono); fill:var(--text); }
+  text.svg-d { font-family:var(--font-mono); fill:var(--text-dim); }
+
+  /* ============ TABLE ============ */
+  .slide--table { padding:clamp(24px,4vh,48px) clamp(28px,4vw,64px); }
+  .table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:14px; overflow:hidden; flex:1; min-height:0; }
+  .table-scroll { overflow:auto; height:100%; }
+  .data-table { width:100%; border-collapse:collapse; }
+  .data-table th { background:var(--surface2); font-family:var(--font-mono); font-size:clamp(10px,1.2vw,13px); font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--cyan); text-align:left; padding:clamp(10px,1.5vh,16px) clamp(12px,1.6vw,22px); border-bottom:2px solid var(--border-bright); white-space:nowrap; position:sticky; top:0; }
+  .data-table td { padding:clamp(10px,1.4vh,15px) clamp(12px,1.6vw,22px); border-bottom:1px solid var(--border); font-size:clamp(13px,1.55vw,17px); vertical-align:top; color:var(--text-dim); }
+  .data-table tbody tr:last-child td { border-bottom:none; }
+  .data-table tbody tr:nth-child(even) { background:rgba(20,53,83,.5); }
+  .data-table td strong { color:var(--text); font-weight:600; }
+  .data-table code { font-family:var(--font-mono); font-size:.85em; background:var(--cyan-dim); color:var(--cyan); padding:1px 5px; border-radius:3px; }
+  .data-table .term { color:var(--green); font-family:var(--font-mono); font-size:.85em; }
+
+  /* ============ CODE ============ */
+  .slide--code { align-items:center; }
+  .slide__code-block { background:var(--code-bg); border:1px solid var(--border-bright); border-radius:14px; padding:clamp(22px,3.4vh,42px) clamp(22px,3.4vw,44px); max-width:1020px; width:100%; position:relative; }
+  .slide__code-filename { position:absolute; top:-12px; left:24px; font-family:var(--font-mono); font-size:11px; font-weight:600; padding:4px 12px; border-radius:5px; background:var(--accent); color:var(--bg); letter-spacing:.5px; }
+  .slide__code-block pre { margin:0; overflow-x:auto; }
+  .slide__code-block code { font-family:var(--font-mono); font-size:clamp(12px,1.42vw,17px); line-height:1.65; color:var(--code-text); white-space:pre; }
+  .slide__code-block .hl { color:var(--cyan); }
+  .slide__code-block .st { color:var(--green); }
+  .slide__code-block .cm { color:var(--text-dim); font-style:italic; }
+  .slide__code-block .an { color:var(--accent); }
+  .code-cap { font-family:var(--font-mono); font-size:clamp(11px,1.3vw,14px); color:var(--text-dim); margin-top:clamp(12px,2vh,20px); max-width:1020px; text-align:left; }
+  .code-cap b { color:var(--accent); font-weight:600; }
+
+  /* ============ QUOTE ============ */
+  .slide--quote { justify-content:center; align-items:center; text-align:center; padding:clamp(56px,10vh,120px) clamp(56px,12vw,200px); }
+  .slide__quote-mark { font-size:clamp(80px,14vw,180px); line-height:.5; opacity:.08; font-family:Georgia,serif; pointer-events:none; margin-bottom:-16px; color:var(--cyan); }
+  .slide--quote blockquote { font-size:clamp(24px,3.8vw,46px); font-weight:500; line-height:1.32; letter-spacing:-.5px; }
+  .slide--quote blockquote em { font-style:normal; color:var(--accent); }
+  .slide--quote cite { font-family:var(--font-mono); font-size:clamp(11px,1.3vw,14px); font-style:normal; margin-top:clamp(16px,3vh,30px); display:block; letter-spacing:1.5px; text-transform:uppercase; color:var(--text-dim); }
+
+  /* ============ CLOSING (full-bleed) ============ */
+  .slide--bleed { padding:0; justify-content:flex-end; }
+  .slide__bg--gradient { position:absolute; inset:0; background:linear-gradient(135deg,#06182b 0%, #0a1f33 45%, #143553 100%); z-index:0; }
+  .slide__scrim { position:absolute; inset:0; background:linear-gradient(to top, rgba(0,0,0,.6) 0%, rgba(0,0,0,.15) 45%, transparent 100%); z-index:1; }
+  .slide--bleed .slide__content { position:relative; z-index:2; padding:clamp(40px,6vh,80px) clamp(40px,8vw,120px); }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-height:700px){ .slide{padding:clamp(24px,4vh,40px) clamp(32px,6vw,80px);} .slide__display{font-size:clamp(34px,7vw,64px);} .slide--divider .slide__number{font-size:clamp(80px,16vw,160px);} }
+  @media (max-height:560px){ .slide__decor{display:none;} .slide__quote-mark{display:none;} }
+  @media (max-width:820px){ .slide--content .slide__inner, .slide--content.right .slide__inner{grid-template-columns:1fr;} .slide--content .slide__aside{display:none;} .slide--split .slide__panels{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="deck">
+
+  <!-- 1 · TITLE -->
+  <section class="slide slide--title">
+    <svg class="slide__decor" style="top:0;right:0;" width="160" height="160" viewBox="0 0 160 160">
+      <line x1="160" y1="0" x2="160" y2="56" stroke="var(--accent)" stroke-width="2" opacity="0.2"/>
+      <line x1="104" y1="0" x2="160" y2="0" stroke="var(--accent)" stroke-width="2" opacity="0.2"/>
+      <circle cx="160" cy="0" r="4" fill="var(--accent)" opacity="0.3"/>
+    </svg>
+    <div class="reveal"><p class="slide__subtitle" style="margin-bottom:clamp(18px,2.4vh,34px); color:var(--cyan);">pi-htn · architecture deep-dive</p></div>
+    <h1 class="slide__display reveal">How pi-htn<br>decomposes a task<br>&amp; <em>where the model thinks</em></h1>
+    <div class="reveal"><p class="slide__subtitle" style="margin-top:clamp(18px,2.4vh,34px);">HTN decomposition is symbolic · LLM inference is 3 bounded artifacts</p></div>
+    <div class="reveal" style="margin-top:clamp(20px,3vh,40px); display:flex; gap:10px; flex-wrap:wrap;">
+      <span class="tag">pr-doctor</span><span class="tag">fix-red-test</span><span class="tag">k8s-medic</span>
+    </div>
+  </section>
+
+  <!-- 2 · DIVIDER 01 -->
+  <section class="slide slide--divider">
+    <span class="slide__number">01</span>
+    <div>
+      <p class="slide__label reveal">The shape of the system</p>
+      <h2 class="slide__heading reveal">Author once, replay many</h2>
+      <p class="slide__subtitle reveal" style="margin-top:14px;">Inference is split into a single planning call and a trusted symbolic loop</p>
+    </div>
+  </section>
+
+  <!-- 3 · CONTENT (left-heavy) -->
+  <section class="slide slide--content">
+    <div class="slide__inner">
+      <div>
+        <p class="slide__label reveal">Two phases, two cost profiles</p>
+        <h2 class="slide__heading reveal">Decomposition is data, not a chat loop</h2>
+        <ul class="slide__bullets" style="margin-top:18px;">
+          <li class="reveal"><strong>Author</strong> — a big model reads a session trace <em>once</em> and emits a YAML HTN domain. Validated offline, then frozen.</li>
+          <li class="reveal"><strong>Run</strong> — a trusted TypeScript runtime decomposes the YAML with a symbolic planner. <strong>No LLM is in the decomposition.</strong></li>
+          <li class="reveal">Small models only fill <em>narrow</em> gaps: one classification before planning, and per-operator argument filling inside the loop.</li>
+          <li class="reveal">Validated by Tree-Planner (arXiv:2310.08582): 1 plan-sample + N grounded executions cut tokens ~92%.</li>
+        </ul>
+      </div>
+      <div class="slide__aside reveal">
+        <svg viewBox="0 0 220 220" width="220" height="220">
+          <rect x="20" y="24" width="180" height="58" rx="8" class="svg-node-fill-a" stroke-width="2"/>
+          <text x="110" y="49" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">AUTHOR</text>
+          <text x="110" y="68" text-anchor="middle" class="svg-d" font-size="10">big model · 1 call</text>
+          <line x1="110" y1="82" x2="110" y2="118" stroke="var(--text-dim)" stroke-width="2" stroke-dasharray="4 4"/>
+          <polygon points="110,124 105,114 115,114" fill="var(--text-dim)"/>
+          <rect x="20" y="126" width="180" height="70" rx="8" class="svg-node-fill-c" stroke-width="2"/>
+          <text x="110" y="152" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">RUN</text>
+          <text x="110" y="170" text-anchor="middle" class="svg-d" font-size="10">symbolic planner +</text>
+          <text x="110" y="184" text-anchor="middle" class="svg-d" font-size="10">small-model gap-fills</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · DIAGRAM (decomposition tree) -->
+  <section class="slide slide--diagram">
+    <p class="slide__label reveal">fix-red-test · the YAML decomposes like this</p>
+    <h2 class="slide__heading reveal">A domain is a task tree of <code class="k">select</code> / <code class="k">sequence</code> nodes</h2>
+    <div class="diagram-wrap reveal">
+      <svg viewBox="0 0 980 420" preserveAspectRatio="xMidYMid meet">
+        <!-- edges -->
+        <g stroke="var(--border-bright)" stroke-width="2" fill="none">
+          <path d="M150,70 L150,120"/>
+          <path d="M150,150 C150,200 360,170 360,120"/>
+          <path d="M150,150 L150,330"/>
+          <!-- select to rungs -->
+          <path d="M360,150 L360,200 L150,200 L150,232"/>
+          <path d="M360,150 L360,200 L470,200 L470,232"/>
+          <path d="M360,150 L360,200 L790,200 L790,232"/>
+        </g>
+        <!-- root -->
+        <rect x="60" y="42" width="180" height="56" rx="9" class="svg-node-fill-c" stroke-width="2"/>
+        <text x="150" y="66" text-anchor="middle" class="svg-l" font-size="14" font-weight="600">root · sequence</text>
+        <text x="150" y="84" text-anchor="middle" class="svg-d" font-size="11">fix-red-test</text>
+        <!-- select -->
+        <rect x="270" y="64" width="180" height="56" rx="9" class="svg-node-fill-c" stroke-width="2"/>
+        <text x="360" y="88" text-anchor="middle" class="svg-l" font-size="14" font-weight="600">repair · select</text>
+        <text x="360" y="106" text-anchor="middle" class="svg-d" font-size="10">¬fixed → first valid rung</text>
+        <!-- rungs -->
+        <rect x="60" y="234" width="180" height="64" rx="9" class="svg-node-fill-a" stroke-width="2"/>
+        <text x="150" y="258" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">m-guard</text>
+        <text x="150" y="276" text-anchor="middle" class="svg-d" font-size="9.5">approach=guard ∧</text>
+        <text x="150" y="289" text-anchor="middle" class="svg-d" font-size="9.5">¬guard_tried · MODEL</text>
+        <rect x="380" y="234" width="180" height="64" rx="9" class="svg-node-fill-a" stroke-width="2"/>
+        <text x="470" y="258" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">m-dedupe</text>
+        <text x="470" y="276" text-anchor="middle" class="svg-d" font-size="9.5">¬dedupe_tried</text>
+        <text x="470" y="289" text-anchor="middle" class="svg-d" font-size="9.5">deterministic fix</text>
+        <rect x="700" y="234" width="180" height="64" rx="9" class="svg-node-fill-g" stroke-width="2"/>
+        <text x="790" y="258" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">m-revert</text>
+        <text x="790" y="276" text-anchor="middle" class="svg-d" font-size="9.5">¬revert_tried</text>
+        <text x="790" y="289" text-anchor="middle" class="svg-d" font-size="9.5">guaranteed green</text>
+        <!-- report -->
+        <rect x="60" y="332" width="180" height="56" rx="9" class="svg-node-fill-c" stroke-width="2"/>
+        <text x="150" y="356" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">report · operator</text>
+        <text x="150" y="374" text-anchor="middle" class="svg-d" font-size="10">fixed ∧ ¬reported</text>
+        <!-- annotation -->
+        <text x="610" y="356" class="svg-d" font-size="11" fill="var(--accent)">each rung: apply → verify (throws on red → replan)</text>
+        <text x="610" y="374" class="svg-d" font-size="11">the *_tried guard excludes the just-tried rung</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 5 · CONTENT (right-heavy) -->
+  <section class="slide slide--content right">
+    <div class="slide__inner">
+      <div class="slide__aside reveal">
+        <svg viewBox="0 0 240 200" width="240" height="200">
+          <rect x="14" y="20" width="212" height="160" rx="10" fill="var(--code-bg)" stroke="var(--border-bright)" stroke-width="1.5"/>
+          <text x="30" y="48" class="svg-d" font-size="12">worldState:</text>
+          <text x="44" y="70" class="svg-l" font-size="12">fixed: <tspan fill="var(--accent)">false</tspan></text>
+          <text x="44" y="90" class="svg-l" font-size="12">approach: <tspan fill="var(--accent)">guard</tspan></text>
+          <text x="44" y="110" class="svg-l" font-size="12">guard_tried: <tspan fill="var(--accent)">false</tspan></text>
+          <line x1="30" y1="124" x2="210" y2="124" stroke="var(--border)" stroke-width="1"/>
+          <text x="30" y="146" class="svg-d" font-size="11">conditions:</text>
+          <text x="44" y="166" class="svg-l" font-size="11.5" fill="var(--cyan)">{not:{eq:[fixed,true]}}</text>
+        </svg>
+      </div>
+      <div>
+        <p class="slide__label reveal">The planner picks branches deterministically</p>
+        <h2 class="slide__heading reveal">World state + a tiny predicate DSL</h2>
+        <ul class="slide__bullets" style="margin-top:18px;">
+          <li class="reveal"><strong>World state</strong> is a flat bag of predicates seeded from the domain &amp; plan input.</li>
+          <li class="reveal">Branch guards use 3 ops: <code class="k">{eq:[k,v]}</code>, <code class="k">{has:k}</code>, <code class="k">{not:&hellip;}</code>. No model is asked "which branch?"</li>
+          <li class="reveal"><strong>Effects</strong> mutate state after each step: <code class="k">{set:{guard_tried:true}}</code> or bind a tool output via <code class="k">$result.&lt;path&gt;</code>.</li>
+          <li class="reveal">Because branching is pure data, the same domain is provably <em>validated offline</em> before it ever runs.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 · DIVIDER 02 -->
+  <section class="slide slide--divider">
+    <span class="slide__number">02</span>
+    <div>
+      <p class="slide__label reveal">Exactly where tokens are spent</p>
+      <h2 class="slide__heading reveal">Three LLM inference artifacts</h2>
+      <p class="slide__subtitle reveal" style="margin-top:14px;">authoring prompt · hoisted decision call · in-loop arg-fill (mode&nbsp;B)</p>
+    </div>
+  </section>
+
+  <!-- 7 · CONTENT (left-heavy) overview of 3 artifacts -->
+  <section class="slide slide--content">
+    <div class="slide__inner">
+      <div>
+        <p class="slide__label reveal">The whole inference surface</p>
+        <h2 class="slide__heading reveal">One author call, two run-time calls</h2>
+        <ul class="slide__bullets" style="margin-top:18px;">
+          <li class="reveal"><strong>① Author prompt</strong> — big model, build-time. Trace → reusable YAML domain. Best-of-N, symbolic validator is the hard gate.</li>
+          <li class="reveal"><strong>② Hoisted decision</strong> — small model, once <em>before</em> planning. The single guess that gates a <code class="k">select</code>.</li>
+          <li class="reveal"><strong>③ In-loop arg-fill</strong> — small model, per operator that carries a <code class="k">prompt</code>. Fills tool args; mode&nbsp;B.</li>
+        </ul>
+      </div>
+      <div class="slide__aside reveal">
+        <svg viewBox="0 0 220 260" width="200" height="240">
+          <rect x="20" y="14" width="180" height="56" rx="8" class="svg-node-fill-a" stroke-width="2"/>
+          <text x="110" y="38" text-anchor="middle" class="svg-l" font-size="12" font-weight="600">① AUTHOR</text>
+          <text x="110" y="56" text-anchor="middle" class="svg-d" font-size="9.5">big · build-time</text>
+          <rect x="20" y="100" width="180" height="56" rx="8" class="svg-node-fill-c" stroke-width="2"/>
+          <text x="110" y="124" text-anchor="middle" class="svg-l" font-size="12" font-weight="600">② HOIST</text>
+          <text x="110" y="142" text-anchor="middle" class="svg-d" font-size="9.5">small · pre-plan</text>
+          <rect x="20" y="186" width="180" height="56" rx="8" class="svg-node-fill-g" stroke-width="2"/>
+          <text x="110" y="210" text-anchor="middle" class="svg-l" font-size="12" font-weight="600">③ ARG-FILL</text>
+          <text x="110" y="228" text-anchor="middle" class="svg-d" font-size="9.5">small · in-loop</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · CODE — artifact 1 author prompt -->
+  <section class="slide slide--code">
+    <div class="slide__code-block reveal">
+      <span class="slide__code-filename">① author.ts · buildAuthorPrompt()</span>
+<pre><code><span class="cm">// big model · runs ONCE per /htn author. Output is frozen YAML.</span>
+You are authoring a reusable HTN domain named <span class="st">"fix-red-test"</span>.
+Below is the tool-call trace of a successful session. Generalize it.
+
+<span class="hl">Trace:</span>
+  1. read({"path":"appendWikiStatus.ts"})
+  2. edit({"path":"...","guard":"..."})
+  3. shell({"cmd":"vitest run idempotency"})   <span class="cm">...</span>
+
+Output ONLY a fenced ```yaml block in this schema:
+  domain / worldState / root: {type: select|sequence, tasks}
+Each primitive: {name, <span class="an">conditions?</span>, operator:{tool,prompt?,exec?}, <span class="an">effects?</span>}
+Identify which steps are conditional; express branch predicates as conditions.
+Use <span class="an">$result.&lt;field&gt;</span> in effects. <span class="an">Do not invent tools not in the trace.</span></code></pre>
+    </div>
+    <p class="code-cap reveal"><b>The instruction is "generalize, don't replay."</b> The model must lift conditional structure &amp; branch predicates out of a linear trace — not echo it.</p>
+  </section>
+
+  <!-- 9 · CONTENT (right-heavy) best-of-N + validator -->
+  <section class="slide slide--content right">
+    <div class="slide__inner">
+      <div class="slide__aside reveal">
+        <svg viewBox="0 0 240 210" width="230" height="200">
+          <g font-family="var(--font-mono)">
+            <rect x="14" y="16" width="64" height="40" rx="6" class="svg-node-fill-a" stroke-width="1.5"/>
+            <rect x="88" y="16" width="64" height="40" rx="6" class="svg-node-fill-a" stroke-width="1.5"/>
+            <rect x="162" y="16" width="64" height="40" rx="6" class="svg-node-fill-a" stroke-width="1.5"/>
+            <text x="120" y="42" text-anchor="middle" class="svg-d" font-size="11">N candidates</text>
+            <line x1="120" y1="58" x2="120" y2="86" stroke="var(--text-dim)" stroke-width="2"/>
+            <rect x="40" y="88" width="160" height="44" rx="8" class="svg-node-fill-c" stroke-width="2"/>
+            <text x="120" y="108" text-anchor="middle" class="svg-l" font-size="11" font-weight="600">validateDomain()</text>
+            <text x="120" y="124" text-anchor="middle" class="svg-d" font-size="9">offline · pure planning</text>
+            <line x1="120" y1="132" x2="120" y2="158" stroke="var(--text-dim)" stroke-width="2"/>
+            <rect x="62" y="160" width="116" height="40" rx="8" class="svg-node-fill-g" stroke-width="2"/>
+            <text x="120" y="184" text-anchor="middle" class="svg-l" font-size="11" font-weight="600">best PASSING</text>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <p class="slide__label reveal">Authoring quality gate</p>
+        <h2 class="slide__heading reveal">Best-of-N, but correctness is symbolic</h2>
+        <ul class="slide__bullets" style="margin-top:18px;">
+          <li class="reveal">The big model returns <strong>N</strong> candidate YAMLs (temperature&gt;0 for diversity).</li>
+          <li class="reveal">Each is parsed and run through <code class="k">validateDomain()</code>: for every synthetic world state, <code class="k">findPlan</code> must yield a non-empty plan. <strong>Zero operators execute.</strong></li>
+          <li class="reveal">Score = <code class="k">1000·passed − failures + richness</code>. The validator is the <em>hard gate</em>; score only ranks among passers.</li>
+          <li class="reveal">A domain that can't decompose is never saved — reliability is enforced before run-time.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 · CODE — artifact 2 hoisted (pr-doctor) -->
+  <section class="slide slide--code">
+    <div class="slide__code-block reveal">
+      <span class="slide__code-filename">② pr-doctor/run.ts · the hoisted classify call</span>
+<pre><code><span class="cm">// small model · ONE call, BEFORE executeDomain() plans the tree.</span>
+const classifyPrompt = `A CI job failed. Test output:
+---
+${testOut.slice(0, 1200)}
+---
+Classify the failure. Output JSON only, one field <span class="an">"failure_class"</span>,
+one of: <span class="st">flaky, lint, test</span>. Example: {"failure_class":"flaky"}`;
+
+const reply = <span class="hl">await</span> model.complete({ prompt: classifyPrompt, worldState:{} });
+<span class="cm">// → hoisted into plan input so a select can branch on it</span>
+executeDomain(yaml, { input: { pr, <span class="an">failure_class</span>: reply.failure_class } });</code></pre>
+    </div>
+    <p class="code-cap reveal"><b>Why hoist?</b> The executor plans the whole domain up-front, so a mid-plan <code class="k">$result</code> can't gate a <code class="k">select</code>. The model's one planning-relevant guess must exist <em>before</em> decomposition.</p>
+  </section>
+
+  <!-- 11 · SPLIT — hoisted vs in-loop -->
+  <section class="slide slide--split">
+    <div class="slide__panels">
+      <div class="slide__panel slide__panel--primary">
+        <p class="slide__label reveal" style="color:var(--cyan);">② Hoisted decision</p>
+        <h2 class="slide__heading reveal" style="font-size:clamp(20px,3vw,32px);">Shapes the plan</h2>
+        <ul class="slide__bullets" style="margin-top:16px;">
+          <li class="reveal">Runs <strong>before</strong> planning, in the demo runner</li>
+          <li class="reveal">Output gates a <code class="k">select</code> branch</li>
+          <li class="reveal">Hoisted into <code class="k">input</code> as a predicate</li>
+          <li class="reveal">pr-doctor: <span class="data-table" style="display:inline"><code>failure_class</code></span> · k8s: <code class="k">action+image</code> · fix-test: <code class="k">approach+line</code></li>
+        </ul>
+      </div>
+      <div class="slide__panel slide__panel--secondary">
+        <p class="slide__label reveal" style="color:var(--green);">③ In-loop arg-fill</p>
+        <h2 class="slide__heading reveal" style="font-size:clamp(20px,3vw,32px);">Fills the operator</h2>
+        <ul class="slide__bullets" style="margin-top:16px;">
+          <li class="reveal">Runs <strong>during</strong> the execute loop</li>
+          <li class="reveal">Fires only when an operator has a <code class="k">prompt</code></li>
+          <li class="reveal">Output becomes the tool's arguments (mode&nbsp;B)</li>
+          <li class="reveal">e.g. the <code class="k">report</code> rung writing a one-sentence note</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · CODE — artifact 2 across the other two domains -->
+  <section class="slide slide--code">
+    <div class="slide__code-block reveal">
+      <span class="slide__code-filename">② the same hoist, two more domains</span>
+<pre><code><span class="cm">// k8s-medic · propose a concrete remediation image</span>
+`A Kubernetes deployment is failing. Diagnosis: pods are in state
+"${reason}" and the current image is "${image}". Propose a corrected,
+valid, publicly pullable image. Output JSON only:
+  {<span class="an">"action"</span>:"set-image", <span class="an">"image"</span>:"&lt;image:tag&gt;"}`
+
+<span class="cm">// fix-red-test · emit the actual one-line code patch (4B model)</span>
+`The function must be idempotent... Emit ONE TypeScript guard statement
+for the top of the body that returns systemPrompt unchanged when the
+footer is present. Output JSON only:
+  {<span class="an">"approach"</span>:"guard", <span class="an">"line"</span>:"&lt;one statement&gt;"}`</code></pre>
+    </div>
+    <p class="code-cap reveal"><b>The model does the narrow creative work</b> — classify a failure, name a pullable image, write one guard line — and nothing else. Strategy &amp; ordering belong to the tree.</p>
+  </section>
+
+  <!-- 13 · CODE — artifact 3 in-loop mode B -->
+  <section class="slide slide--code">
+    <div class="slide__code-block reveal">
+      <span class="slide__code-filename">③ executor.ts · per-operator arg-fill (mode B)</span>
+<pre><code><span class="hl">for</span> (const compiledTask of plan) {
+  const binding = findBinding(yaml, compiledTask.Name);
+  let args = {};
+  <span class="hl">if</span> (binding.prompt) {                         <span class="cm">// only operators with a prompt</span>
+    const prompt = renderTemplate(binding.prompt, ctx.WorldState);
+    args = <span class="hl">await</span> opts.smallModel.complete({ prompt, worldState: ctx.WorldState });
+  }
+  const result = <span class="hl">await</span> opts.tools.invoke(tool, resolveArgs(args, ws), ws);
+  compiledTask.applyEffects(ctx);                <span class="cm">// literal effects FIRST</span>
+  applyResultRefs(yaml, name, result, ctx);      <span class="an">// THEN $result.* refs</span>
+}</code></pre>
+    </div>
+    <p class="code-cap reveal"><b>The prompt is data in the YAML.</b> e.g. k8s-medic's report rung: <code class="k">"...healed via {{last_strategy}}. Write a single-sentence incident note. Output JSON only: {note}"</code> — <code class="k">{{&hellip;}}</code> rendered from world state at exec time.</p>
+  </section>
+
+  <!-- 14 · CONTENT (right-heavy) small-model client -->
+  <section class="slide slide--content right">
+    <div class="slide__inner">
+      <div class="slide__aside reveal">
+        <svg viewBox="0 0 240 210" width="230" height="200">
+          <rect x="14" y="18" width="212" height="174" rx="10" fill="var(--code-bg)" stroke="var(--border-bright)" stroke-width="1.5"/>
+          <text x="30" y="46" class="svg-d" font-size="11.5">response_format:</text>
+          <text x="44" y="64" class="svg-l" font-size="11.5" fill="var(--cyan)">{type:"json_object"}</text>
+          <text x="30" y="92" class="svg-d" font-size="11.5">temperature: <tspan fill="var(--accent)">0</tspan></text>
+          <text x="30" y="120" class="svg-d" font-size="11.5">max_tokens: <tspan fill="var(--accent)">1024</tspan></text>
+          <line x1="30" y1="134" x2="210" y2="134" stroke="var(--border)" stroke-width="1"/>
+          <text x="30" y="158" class="svg-d" font-size="11">chat_template_kwargs:</text>
+          <text x="44" y="176" class="svg-l" font-size="11" fill="var(--green)">enable_thinking:false</text>
+        </svg>
+      </div>
+      <div>
+        <p class="slide__label reveal">smallModel.ts · LlamaSmallModel</p>
+        <h2 class="slide__heading reveal">A disciplined JSON oracle</h2>
+        <ul class="slide__bullets" style="margin-top:18px;">
+          <li class="reveal">OpenAI-compatible client for any llama.cpp / vLLM server; defaults to the shared Zosma devserver so <strong>inference stays off the laptop</strong>.</li>
+          <li class="reveal"><code class="k">json_object</code> mode + <code class="k">temperature 0</code> → deterministic, parseable replies. A tolerant parser strips fences as backup.</li>
+          <li class="reveal"><code class="k">enable_thinking:false</code> stops reasoning models (qwopus-4b-coder) emitting 18k+ tokens of <code class="k">reasoning_content</code> before the JSON ever lands.</li>
+          <li class="reveal">Every artifact returns a small JSON object — never prose, never code to <em>exec</em>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 · DIAGRAM — repair ladder + backtrack -->
+  <section class="slide slide--diagram">
+    <p class="slide__label reveal">the shared reliability recipe</p>
+    <h2 class="slide__heading reveal">Model proposes · the ladder backtracks to guaranteed-green</h2>
+    <div class="diagram-wrap reveal">
+      <svg viewBox="0 0 980 380" preserveAspectRatio="xMidYMid meet">
+        <g stroke="var(--border-bright)" stroke-width="2" fill="none">
+          <path d="M180,90 L320,90"/>
+          <path d="M500,90 L640,90"/>
+          <!-- verify fail backtrack arcs -->
+          <path d="M410,118 C410,200 230,200 230,122" stroke="var(--accent)" stroke-dasharray="6 5"/>
+          <path d="M730,118 C730,230 410,250 320,118" stroke="var(--accent)" stroke-dasharray="6 5"/>
+        </g>
+        <!-- rung 1 -->
+        <rect x="40" y="62" width="140" height="58" rx="9" class="svg-node-fill-a" stroke-width="2"/>
+        <text x="110" y="86" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">rung 1</text>
+        <text x="110" y="104" text-anchor="middle" class="svg-d" font-size="10">model patch</text>
+        <!-- verify 1 -->
+        <rect x="320" y="62" width="90" height="58" rx="9" class="svg-node-fill-c" stroke-width="2"/>
+        <text x="365" y="88" text-anchor="middle" class="svg-l" font-size="12" font-weight="600">verify</text>
+        <text x="365" y="105" text-anchor="middle" class="svg-d" font-size="9">throws→replan</text>
+        <!-- rung 2 -->
+        <rect x="420" y="62" width="140" height="58" rx="9" class="svg-node-fill-a" stroke-width="2"/>
+        <text x="490" y="86" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">rung 2</text>
+        <text x="490" y="104" text-anchor="middle" class="svg-d" font-size="10">deterministic fix</text>
+        <!-- verify 2 -->
+        <rect x="640" y="62" width="90" height="58" rx="9" class="svg-node-fill-c" stroke-width="2"/>
+        <text x="685" y="88" text-anchor="middle" class="svg-l" font-size="12" font-weight="600">verify</text>
+        <text x="685" y="105" text-anchor="middle" class="svg-d" font-size="9">throws→replan</text>
+        <!-- terminal -->
+        <rect x="760" y="62" width="180" height="58" rx="9" class="svg-node-fill-g" stroke-width="2"/>
+        <text x="850" y="86" text-anchor="middle" class="svg-l" font-size="13" font-weight="600">terminal rung</text>
+        <text x="850" y="104" text-anchor="middle" class="svg-d" font-size="10">guaranteed green</text>
+        <!-- labels -->
+        <text x="245" y="210" text-anchor="middle" class="svg-d" font-size="11" fill="var(--accent)">red verify → executor replans, *_tried excludes the rung</text>
+        <text x="490" y="300" text-anchor="middle" class="svg-d" font-size="12">structural backtracking — not a retry loop. circuit breaker trips after maxReplans (5).</text>
+        <text x="850" y="150" text-anchor="middle" class="svg-d" font-size="10">revert / restore / canonical template</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 16 · TABLE — three domains side by side -->
+  <section class="slide slide--table">
+    <h2 class="slide__heading reveal">The three configured domains, by inference artifact</h2>
+    <div class="table-wrap reveal" style="margin-top:clamp(8px,1.5vh,18px);">
+      <div class="table-scroll">
+        <table class="data-table">
+          <thead><tr><th>Domain</th><th>② Hoisted call (pre-plan)</th><th>Ladder rungs (select)</th><th>③ In-loop call</th><th>Terminal safety net</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>pr-doctor</strong><br><span class="term">heal red CI</span></td>
+              <td>classify → <code>failure_class</code> ∈ {flaky,lint,test}</td>
+              <td>m-rerun → m-lint → <strong>m-revert</strong></td>
+              <td><code>report</code>: one-sentence PR comment</td>
+              <td>revert breaking commit</td>
+            </tr>
+            <tr>
+              <td><strong>fix-red-test</strong><br><span class="term">heal a RED test</span></td>
+              <td>patch → <code>approach</code> + <code>line</code> (4B writes the guard)</td>
+              <td>m-guard → m-dedupe → <strong>m-revert</strong></td>
+              <td><code>report</code>: one-sentence PR comment</td>
+              <td>rewrite fn from canonical template</td>
+            </tr>
+            <tr>
+              <td><strong>k8s-medic</strong><br><span class="term">heal a deployment</span></td>
+              <td>remediate → <code>action</code> + <code>image</code> (pullable tag)</td>
+              <td>m-apply → <strong>m-restore</strong></td>
+              <td><code>report</code>: one-sentence incident note</td>
+              <td>restore last-known-good image</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17 · QUOTE -->
+  <section class="slide slide--quote">
+    <div class="slide__quote-mark reveal">&ldquo;</div>
+    <blockquote class="reveal">The small model does the <em>narrow</em> creative work.<br>The HTN owns structure, ordering &amp; backtracking — and<br>always lands on a rung that is <em>guaranteed to converge</em>.</blockquote>
+    <cite class="reveal">pi-htn · reliability is structural, not prompted</cite>
+  </section>
+
+  <!-- 18 · CLOSING -->
+  <section class="slide slide--bleed">
+    <div class="slide__bg--gradient"></div>
+    <div class="slide__scrim"></div>
+    <div class="slide__content">
+      <p class="slide__label reveal" style="color:var(--cyan);">Recap</p>
+      <h2 class="slide__heading reveal" style="max-width:18ch;">Decomposition is symbolic. Inference is three bounded artifacts.</h2>
+      <ul class="slide__bullets reveal" style="margin-top:18px; max-width:60ch;">
+        <li><strong>① Author prompt</strong> — big model, once, trace → validated YAML</li>
+        <li><strong>② Hoisted decision</strong> — small model, once, gates a <code class="k">select</code></li>
+        <li><strong>③ In-loop arg-fill</strong> — small model, per prompted operator (mode B)</li>
+      </ul>
+      <p class="slide__subtitle reveal" style="margin-top:22px; color:var(--text-dim);">Everything between is a trusted TypeScript loop over a frozen task tree.</p>
+    </div>
+  </section>
+
+</div><!-- /deck -->
+
+<script>
+  // SlideEngine (offline; no mermaid, no CDN). Lifted from lumen-slides template.
+  function SlideEngine(){
+    this.deck=document.querySelector('.deck');
+    this.slides=[].slice.call(document.querySelectorAll('.slide'));
+    this.current=0; this.total=this.slides.length;
+    this.buildChrome(); this.bindEvents(); this.observe(); this.update();
+  }
+  SlideEngine.prototype.buildChrome=function(){
+    var bar=document.createElement('div');bar.className='deck-progress';document.body.appendChild(bar);this.bar=bar;
+    var dots=document.createElement('div');dots.className='deck-dots';var self=this;
+    this.slides.forEach(function(_,i){var d=document.createElement('button');d.className='deck-dot';d.title='Slide '+(i+1);d.onclick=function(){self.goTo(i);};dots.appendChild(d);});
+    document.body.appendChild(dots);this.dots=[].slice.call(dots.children);
+    var ctr=document.createElement('div');ctr.className='deck-counter';document.body.appendChild(ctr);this.counter=ctr;
+    var hints=document.createElement('div');hints.className='deck-hints';hints.textContent='\u2191 \u2193 or scroll to navigate';document.body.appendChild(hints);this.hints=hints;
+    this.hintTimer=setTimeout(function(){hints.classList.add('faded');},4000);
+  };
+  SlideEngine.prototype.bindEvents=function(){
+    var self=this;
+    document.addEventListener('keydown',function(e){
+      if(e.target.closest('.table-scroll,input,textarea,[contenteditable]'))return;
+      if(['ArrowDown','ArrowRight',' ','PageDown'].indexOf(e.key)>-1){e.preventDefault();self.next();}
+      else if(['ArrowUp','ArrowLeft','PageUp'].indexOf(e.key)>-1){e.preventDefault();self.prev();}
+      else if(e.key==='Home'){e.preventDefault();self.goTo(0);}
+      else if(e.key==='End'){e.preventDefault();self.goTo(self.total-1);}
+      self.fadeHints();
+    });
+    var tY;
+    this.deck.addEventListener('touchstart',function(e){tY=e.touches[0].clientY;},{passive:true});
+    this.deck.addEventListener('touchend',function(e){var dy=tY-e.changedTouches[0].clientY;if(Math.abs(dy)>50){dy>0?self.next():self.prev();}});
+  };
+  SlideEngine.prototype.observe=function(){
+    var self=this;
+    var obs=new IntersectionObserver(function(entries){entries.forEach(function(en){if(en.isIntersecting){en.target.classList.add('visible');self.current=self.slides.indexOf(en.target);self.update();}});},{threshold:0.5});
+    this.slides.forEach(function(s){obs.observe(s);});
+  };
+  SlideEngine.prototype.goTo=function(i){this.slides[Math.max(0,Math.min(i,this.total-1))].scrollIntoView({behavior:'smooth'});};
+  SlideEngine.prototype.next=function(){if(this.current<this.total-1)this.goTo(this.current+1);};
+  SlideEngine.prototype.prev=function(){if(this.current>0)this.goTo(this.current-1);};
+  SlideEngine.prototype.update=function(){
+    this.bar.style.width=((this.current+1)/this.total*100)+'%';
+    var c=this.current;this.dots.forEach(function(d,i){d.classList.toggle('active',i===c);});
+    this.counter.textContent=(this.current+1)+' / '+this.total;
+  };
+  SlideEngine.prototype.fadeHints=function(){clearTimeout(this.hintTimer);this.hints.classList.add('faded');};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){new SlideEngine();});
+  else new SlideEngine();
+</script>
+</body>
+</html>
